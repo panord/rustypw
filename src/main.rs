@@ -6,6 +6,10 @@ use std::io::stdin;
 use std::process::Command;
 use std::result::Result;
 use std::string::String;
+use std::path::PathBuf;
+use std::path::Path;
+extern crate rpassword;
+
 static DIR: &'static str = "~/.bw.d/";
 
 #[derive(Serialize, Deserialize)]
@@ -18,9 +22,9 @@ fn prompt_yesorno(msg: &str) -> bool {
     let mut ans = String::new();
     println!("{} [y/n]", msg);
     stdin()
-        .read_to_string(&mut ans)
+        .read_line(&mut ans)
         .expect("Failed reading from stdin");
-    match ans.to_ascii_lowercase().as_str() {
+    match ans.to_ascii_lowercase().replace("\n", "").as_str() {
         "y" | "yes" => true,
         "n" | "no" => false,
         _ => {
@@ -34,8 +38,35 @@ fn usage() {
     println!("Usage: ...");
 }
 
+fn store_session(session: &str) {
+    let fname = Path::new("/tmp/session");
+    let mut file = File::create(fname).expect("Failed to create session");
+    file.write_all(session.as_bytes());
+}
+
+fn load_session(session: &str) -> String{
+    let fname: &Path = Path::new("/tmp/session");
+    std::fs::read_to_string(fname).expect("failed to load session")
+}
+
 fn login(args: Vec<String>) {
-    println!("Loggin in...");
+    let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
+    let out = Command::new("bw")
+    .arg("unlock")
+    .arg("--raw")
+    .arg(pass)
+    .output()
+    .expect("Failed to set noisy terminal");
+
+    if !out.status.success() {
+        std::io::stdout().write_all(&out.stderr).unwrap();
+        println!();
+        return;
+    }
+    store_session(std::str::from_utf8(&out.stdout).unwrap());
+    println!("Storing session key.. ");
+    std::io::stdout().write_all(&out.stdout).unwrap();
+    println!()
 }
 
 fn get_id(alias: &str, pws: Vec<PwEntry>) -> Result<String, ()> {
@@ -65,7 +96,7 @@ fn get(pws: Vec<PwEntry>, _args: Vec<String>) {
         .expect("Failed getting pw args[1]");
 }
 
-fn command(pws: Vec<PwEntry>, args: Vec<String>) {
+fn rpw_cmd(pws: Vec<PwEntry>, args: Vec<String>) {
     if args.len() < 2 {
         usage();
         return;
@@ -78,44 +109,49 @@ fn command(pws: Vec<PwEntry>, args: Vec<String>) {
     }
 }
 
-fn write_db(fname: &str, entries: Vec<PwEntry>) -> Result<(), &'static str> {
+fn write_db(fname: &Path, entries: Vec<PwEntry>) -> Result<(), &'static str> {
     let json = serde_json::to_string(&entries).expect("Failed to serialize passwords");
     // This isn't a nice way to do it .. but wth!
-    let mut db = File::create(fname).expect("Failed to create database");
+    let mut db = File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
 
     db.write_all(&json.as_bytes())
         .expect("Failed writing database");
     Ok(())
 }
 
-fn db_create_if_yes(fname: &str) -> Result<bool, String> {
-    if !prompt_yesorno(&format!("Would you like to create {} ?", fname)) {
+fn db_create_if_yes(fname: &Path) -> Result<bool, String> {
+    println!("Could not find database {}", fname.display());
+    if !prompt_yesorno(&format!("Would you like to create {} ?", fname.display())) {
         return Ok(false);
     }
-
-    match File::create(fname) {
-        Ok(_) => Ok(true),
-        Err(_) => Err(format!("Failed to create database {}", fname)),
-    }
+    println!("Creating {}", fname.display());
+    File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
+    return Ok(true);
 }
 
-fn read_db(fname: String) -> Result<Vec<PwEntry>, String> {
+fn read_db(fname: &Path) -> Result<Vec<PwEntry>, String> {
     match File::open(&fname) {
         Ok(f) => {
             let db: Vec<PwEntry>;
+            println!("{}", fname.display());
             Ok(serde_json::from_reader::<File, Vec<PwEntry>>(f)
                 .expect("Failed deserializing database"))
         }
         Err(_) => {
             db_create_if_yes(&fname)?;
-            read_db(fname)
+            write_db(&fname, vec!())?;
+            read_db(&fname)
         }
     }
 }
 
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
-    let pws: Vec<PwEntry> = read_db(format!("{}{}", DIR, "bw.db")).unwrap();
+    let dir = std::env::home_dir().unwrap().join(".rpw.d");
+    std::fs::create_dir_all(&dir);
+
+    let path = dir.join("rusty.db");
+    let pws: Vec<PwEntry> = read_db(&path).unwrap();
 
     println!("\n\n\n\n");
     println!("Rusty Cache starting up!...");
@@ -123,7 +159,6 @@ fn main() -> Result<(), &'static str> {
         println!("\t{}", arg);
     }
 
-    command(pws, args);
-    println!("Rusty Cache exiting Exiting");
+    rpw_cmd(pws, args);
     Ok(())
 }
