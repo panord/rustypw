@@ -3,11 +3,11 @@ use std::env;
 use std::fs::*;
 use std::io::prelude::*;
 use std::io::stdin;
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 use std::result::Result;
 use std::string::String;
-use std::path::PathBuf;
-use std::path::Path;
 extern crate rpassword;
 
 static DIR: &'static str = "~/.bw.d/";
@@ -15,6 +15,11 @@ static DIR: &'static str = "~/.bw.d/";
 #[derive(Serialize, Deserialize)]
 struct PwEntry {
     alias: String,
+    id: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct BwID {
     id: String,
 }
 
@@ -39,24 +44,24 @@ fn usage() {
 }
 
 fn store_session(session: &str) {
-    let fname = Path::new("/tmp/session");
+    let fname = Path::new("/tmp/rpw-session");
     let mut file = File::create(fname).expect("Failed to create session");
     file.write_all(session.as_bytes());
 }
 
-fn load_session(session: &str) -> String{
-    let fname: &Path = Path::new("/tmp/session");
+fn load_session() -> String {
+    let fname: &Path = Path::new("/tmp/rpw-session");
     std::fs::read_to_string(fname).expect("failed to load session")
 }
 
 fn login(args: Vec<String>) {
     let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
     let out = Command::new("bw")
-    .arg("unlock")
-    .arg("--raw")
-    .arg(pass)
-    .output()
-    .expect("Failed to set noisy terminal");
+        .arg("unlock")
+        .arg("--raw")
+        .arg(pass)
+        .output()
+        .expect("Failed to set noisy terminal");
 
     if !out.status.success() {
         std::io::stdout().write_all(&out.stderr).unwrap();
@@ -69,34 +74,74 @@ fn login(args: Vec<String>) {
     println!()
 }
 
-fn get_id(alias: &str, pws: Vec<PwEntry>) -> Result<String, ()> {
+fn get_id<'a>(alias: &str, pws: &'a Vec<PwEntry>) -> Result<&'a str, ()> {
     for pw in pws {
         if pw.alias == alias {
-            return Ok(pw.id);
+            return Ok(&pw.id);
         }
     }
     Err(())
 }
 
-fn get(pws: Vec<PwEntry>, _args: Vec<String>) {
+fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
     if _args.len() != 3 {
         usage();
         return;
     }
 
     let alias: &str = &_args[2];
-    let id: String = get_id(alias, pws)
+    let id: &str = get_id(alias, pws)
         .expect(format!("Could not find id corresponding to '{}'", alias).as_str());
-    let mut args: Vec<String> = vec![id];
 
-    args.extend(_args);
-    Command::new("bw get password")
-        .args(args)
+    let session: String = load_session();
+    let out = Command::new("bw")
+        .arg("get")
+        .arg("password")
+        .arg(id)
+        .arg("--session")
+        .arg(session)
         .output()
         .expect("Failed getting pw args[1]");
+    std::io::stdout().write_all(&out.stdout).unwrap();
 }
 
-fn rpw_cmd(pws: Vec<PwEntry>, args: Vec<String>) {
+fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
+    if _args.len() != 4 {
+        usage();
+        return;
+    }
+
+    let name: &str = &_args[2];
+    let alias: &str = &_args[3];
+
+    if get_id(alias, pws).is_ok() {
+        print!("Alias already known");
+        return;
+    }
+
+    let session: String = load_session();
+    let json = Command::new("bw")
+        .arg("get")
+        .arg("item")
+        .arg(name)
+        .arg("--session")
+        .arg(session)
+        .arg("--pretty")
+        .output()
+        .expect("Failed aliasing");
+
+    let id = serde_json::from_slice::<BwID>(&json.stdout)
+        .expect("Failed getting id")
+        .id;
+    print!("{}={}\n", alias, id);
+    let entry = PwEntry {
+        id: id,
+        alias: alias.to_string(),
+    };
+    pws.push(entry);
+}
+
+fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     if args.len() < 2 {
         usage();
         return;
@@ -104,7 +149,8 @@ fn rpw_cmd(pws: Vec<PwEntry>, args: Vec<String>) {
 
     match args[1].as_ref() {
         "login" => login(args),
-        "get" => get(pws, args),
+        "get" => get(&pws, args),
+        "alias" => alias(pws, args),
         _ => print!("Unknown command {} not implemented", args[1]),
     }
 }
@@ -112,7 +158,8 @@ fn rpw_cmd(pws: Vec<PwEntry>, args: Vec<String>) {
 fn write_db(fname: &Path, entries: Vec<PwEntry>) -> Result<(), &'static str> {
     let json = serde_json::to_string(&entries).expect("Failed to serialize passwords");
     // This isn't a nice way to do it .. but wth!
-    let mut db = File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
+    let mut db =
+        File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
 
     db.write_all(&json.as_bytes())
         .expect("Failed writing database");
@@ -139,7 +186,7 @@ fn read_db(fname: &Path) -> Result<Vec<PwEntry>, String> {
         }
         Err(_) => {
             db_create_if_yes(&fname)?;
-            write_db(&fname, vec!())?;
+            write_db(&fname, vec![])?;
             read_db(&fname)
         }
     }
@@ -151,7 +198,7 @@ fn main() -> Result<(), &'static str> {
     std::fs::create_dir_all(&dir);
 
     let path = dir.join("rusty.db");
-    let pws: Vec<PwEntry> = read_db(&path).unwrap();
+    let mut pws: Vec<PwEntry> = read_db(&path).unwrap();
 
     println!("\n\n\n\n");
     println!("Rusty Cache starting up!...");
@@ -159,6 +206,7 @@ fn main() -> Result<(), &'static str> {
         println!("\t{}", arg);
     }
 
-    rpw_cmd(pws, args);
+    rpw_cmd(&mut pws, args);
+    write_db(&path, pws).unwrap();
     Ok(())
 }
