@@ -101,8 +101,20 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
         .arg("--session")
         .arg(session)
         .output()
-        .expect("Failed getting pw args[1]");
-    std::io::stdout().write_all(&out.stdout).unwrap();
+        .expect("Failed getting pw");
+
+    let mut clip = Command::new("xclip")
+        .stdin(std::process::Stdio::piped())
+        .arg("-selection")
+        .arg("clipboard")
+        .spawn()
+        .expect("Failed getting pw");
+
+    clip.stdin
+        .as_mut()
+        .unwrap()
+        .write_all(&out.stdout)
+        .expect("Failed to open stdin");
 }
 
 fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
