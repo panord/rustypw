@@ -54,7 +54,7 @@ fn load_session() -> String {
     std::fs::read_to_string(fname).expect("failed to load session")
 }
 
-fn login(args: Vec<String>) {
+fn unlock() {
     let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
     let out = Command::new("bw")
         .arg("unlock")
@@ -65,9 +65,10 @@ fn login(args: Vec<String>) {
 
     if !out.status.success() {
         std::io::stdout().write_all(&out.stderr).unwrap();
-        println!();
+        std::io::stdout().write_all(&out.stdout).unwrap();
         return;
     }
+
     store_session(std::str::from_utf8(&out.stdout).unwrap());
     println!("Storing session key.. ");
     std::io::stdout().write_all(&out.stdout).unwrap();
@@ -160,7 +161,7 @@ fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     }
 
     match args[1].as_ref() {
-        "login" => login(args),
+        "unlock" => unlock(),
         "get" => get(&pws, args),
         "alias" => alias(pws, args),
         _ => print!("Unknown command {} not implemented", args[1]),
