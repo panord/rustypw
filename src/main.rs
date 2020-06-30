@@ -12,46 +12,18 @@ extern crate rpassword;
 
 static DIR: &'static str = "~/.bw.d/";
 
-#[derive(Serialize, Deserialize)]
-struct PwEntry {
-    alias: String,
-    id: String,
-}
+mod jconf;
+mod session;
+
+use jconf::PwEntry;
 
 #[derive(Serialize, Deserialize)]
 struct BwID {
     id: String,
 }
 
-fn prompt_yesorno(msg: &str) -> bool {
-    let mut ans = String::new();
-    println!("{} [y/n]", msg);
-    stdin()
-        .read_line(&mut ans)
-        .expect("Failed reading from stdin");
-    match ans.to_ascii_lowercase().replace("\n", "").as_str() {
-        "y" | "yes" => true,
-        "n" | "no" => false,
-        _ => {
-            println!("Please enter y or n");
-            prompt_yesorno(msg)
-        }
-    }
-}
-
 fn usage() {
     println!("Usage: ...");
-}
-
-fn store_session(session: &str) {
-    let fname = Path::new("/tmp/rpw-session");
-    let mut file = File::create(fname).expect("Failed to create session");
-    file.write_all(session.as_bytes());
-}
-
-fn load_session() -> String {
-    let fname: &Path = Path::new("/tmp/rpw-session");
-    std::fs::read_to_string(fname).expect("failed to load session")
 }
 
 fn unlock() {
@@ -69,7 +41,7 @@ fn unlock() {
         return;
     }
 
-    store_session(std::str::from_utf8(&out.stdout).unwrap());
+    session::store_session(std::str::from_utf8(&out.stdout).unwrap());
     println!("Storing session key.. ");
     std::io::stdout().write_all(&out.stdout).unwrap();
     println!()
@@ -94,7 +66,7 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
     let id: &str = get_id(alias, pws)
         .expect(format!("Could not find id corresponding to '{}'", alias).as_str());
 
-    let session: String = load_session();
+    let session: String = session::load_session();
     let out = Command::new("bw")
         .arg("get")
         .arg("password")
@@ -132,7 +104,7 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
         return;
     }
 
-    let session: String = load_session();
+    let session: String = session::load_session();
     let json = Command::new("bw")
         .arg("get")
         .arg("item")
@@ -168,50 +140,15 @@ fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     }
 }
 
-fn write_db(fname: &Path, entries: Vec<PwEntry>) -> Result<(), &'static str> {
-    let json = serde_json::to_string(&entries).expect("Failed to serialize passwords");
-    // This isn't a nice way to do it .. but wth!
-    let mut db =
-        File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
-
-    db.write_all(&json.as_bytes())
-        .expect("Failed writing database");
-    Ok(())
-}
-
-fn db_create_if_yes(fname: &Path) -> Result<bool, String> {
-    println!("Could not find database {}", fname.display());
-    if !prompt_yesorno(&format!("Would you like to create {} ?", fname.display())) {
-        return Ok(false);
-    }
-    println!("Creating {}", fname.display());
-    File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
-    return Ok(true);
-}
-
-fn read_db(fname: &Path) -> Result<Vec<PwEntry>, String> {
-    match File::open(&fname) {
-        Ok(f) => {
-            let db: Vec<PwEntry>;
-            println!("{}", fname.display());
-            Ok(serde_json::from_reader::<File, Vec<PwEntry>>(f)
-                .expect("Failed deserializing database"))
-        }
-        Err(_) => {
-            db_create_if_yes(&fname)?;
-            write_db(&fname, vec![])?;
-            read_db(&fname)
-        }
-    }
-}
-
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
     let dir = std::env::home_dir().unwrap().join(".rpw.d");
     std::fs::create_dir_all(&dir);
 
     let path = dir.join("rusty.db");
-    let mut pws: Vec<PwEntry> = read_db(&path).unwrap();
+
+    jconf::init(&path);
+    let mut pws: Vec<PwEntry> = jconf::read(&path).unwrap();
 
     println!("\n\n\n\n");
     println!("Rusty Cache starting up!...");
@@ -220,6 +157,6 @@ fn main() -> Result<(), &'static str> {
     }
 
     rpw_cmd(&mut pws, args);
-    write_db(&path, pws).unwrap();
+    jconf::write(&path, pws).unwrap();
     Ok(())
 }
