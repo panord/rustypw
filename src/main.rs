@@ -97,7 +97,7 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
     let alias: &str = &_args[3];
 
     if get_id(alias, pws).is_ok() {
-        print!("Alias already known");
+        println!("Alias already known");
         return;
     }
 
@@ -115,7 +115,7 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
     let id = serde_json::from_slice::<BwID>(&json.stdout)
         .expect("Failed getting id")
         .id;
-    print!("{}={}\n", alias, id);
+    println!("{}={}", alias, id);
     let entry = PwEntry {
         id: id,
         alias: alias.to_string(),
