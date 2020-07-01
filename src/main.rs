@@ -7,6 +7,7 @@ extern crate rpassword;
 
 mod jconf;
 mod session;
+extern crate dirs;
 
 use jconf::BwID;
 use jconf::PwEntry;
@@ -131,7 +132,8 @@ fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
 
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
-    let dir = std::env::home_dir().unwrap().join(".rpw.d");
+    let dir = dirs::home_dir().unwrap().join(".rpw.d");
+
     std::fs::create_dir_all(&dir).expect("Failed to create rpw dir");
 
     let path = dir.join("rusty.db");
