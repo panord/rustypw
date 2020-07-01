@@ -12,8 +12,15 @@ extern crate dirs;
 use jconf::BwID;
 use jconf::PwEntry;
 
-fn usage() {
-    println!("Usage: ...");
+fn usage(key: &str) {
+    print!("rpw ");
+    match key {
+        "unlock" => print!("unlock"),
+        "get" => print!("get <alias>"),
+        "alias" => print!("alias <name> <alias>"),
+        _ => print!("unlock | alias | get"),
+    }
+    println!("");
 }
 
 fn unlock() {
@@ -48,7 +55,7 @@ fn get_id<'a>(alias: &str, pws: &'a Vec<PwEntry>) -> Result<&'a str, ()> {
 
 fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
     if _args.len() != 3 {
-        usage();
+        usage("get");
         return;
     }
 
@@ -82,7 +89,7 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
 
 fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
     if _args.len() != 4 {
-        usage();
+        usage("alias");
         return;
     }
 
@@ -118,7 +125,7 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
 
 fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     if args.len() < 2 {
-        usage();
+        usage("");
         return;
     }
 
@@ -126,7 +133,7 @@ fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
         "unlock" => unlock(),
         "get" => get(&pws, args),
         "alias" => alias(pws, args),
-        _ => print!("Unknown command {} not implemented", args[1]),
+        _ => println!("Unknown command {} not implemented", args[1]),
     }
 }
 
@@ -140,12 +147,6 @@ fn main() -> Result<(), &'static str> {
 
     jconf::init(&path).expect("Failed to create rpw config");
     let mut pws: Vec<PwEntry> = jconf::read(&path).unwrap();
-
-    println!("\n\n\n\n");
-    println!("Rusty Cache starting up!...");
-    for arg in &args {
-        println!("\t{}", arg);
-    }
 
     rpw_cmd(&mut pws, args);
     jconf::write(&path, pws).unwrap();
