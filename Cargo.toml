@@ -1,5 +1,5 @@
 [package]
-name = "rustypw"
+name = "rpw"
 version = "0.1.0"
 authors = ["Patrik Lundgren"]
 edition = "2018"
