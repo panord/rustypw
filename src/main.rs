@@ -1,26 +1,15 @@
-use serde::{Deserialize, Serialize};
 use std::env;
-use std::fs::*;
 use std::io::prelude::*;
-use std::io::stdin;
-use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 use std::result::Result;
 use std::string::String;
 extern crate rpassword;
 
-static DIR: &'static str = "~/.bw.d/";
-
 mod jconf;
 mod session;
 
+use jconf::BwID;
 use jconf::PwEntry;
-
-#[derive(Serialize, Deserialize)]
-struct BwID {
-    id: String,
-}
 
 fn usage() {
     println!("Usage: ...");
@@ -143,11 +132,11 @@ fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
     let dir = std::env::home_dir().unwrap().join(".rpw.d");
-    std::fs::create_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("Failed to create rpw dir");
 
     let path = dir.join("rusty.db");
 
-    jconf::init(&path);
+    jconf::init(&path).expect("Failed to create rpw config");
     let mut pws: Vec<PwEntry> = jconf::read(&path).unwrap();
 
     println!("\n\n\n\n");
