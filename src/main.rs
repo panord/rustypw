@@ -7,6 +7,9 @@ extern crate rpassword;
 
 mod jconf;
 mod session;
+mod store;
+mod cli;
+
 extern crate dirs;
 
 use jconf::BwID;
@@ -25,23 +28,14 @@ fn usage(key: &str) {
 
 fn unlock() {
     let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
-    let out = Command::new("bw")
-        .arg("unlock")
-        .arg("--raw")
-        .arg(pass)
-        .output()
-        .expect("Failed to set noisy terminal");
-
-    if !out.status.success() {
-        std::io::stdout().write_all(&out.stderr).unwrap();
-        std::io::stdout().write_all(&out.stdout).unwrap();
-        return;
+    let session = store::unlock(&pass);
+    match session {
+        Ok(s) => {
+            println!("Storing session...\n{}", s);
+            session::store_session(&s);
+        },
+        Err(s) => cli::error(&s),
     }
-
-    session::store_session(std::str::from_utf8(&out.stdout).unwrap());
-    println!("Storing session key.. ");
-    std::io::stdout().write_all(&out.stdout).unwrap();
-    println!()
 }
 
 fn get_id<'a>(alias: &str, pws: &'a Vec<PwEntry>) -> Result<&'a str, ()> {
