@@ -81,9 +81,8 @@ pub fn alias(
 
     match get_pw_id(name, &session) {
         Ok(id) => {
-            serde_json::from_str::<BwID>(&id).expect("fail").id;
             let entry = PwEntry {
-                id: id,
+                id: serde_json::from_str::<BwID>(&id).expect("fail").id,
                 alias: alias.to_string(),
             };
             let msg = format!("{}={}", &entry.alias, &entry.id);
