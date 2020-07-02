@@ -14,17 +14,6 @@ extern crate dirs;
 
 use jconf::PwEntry;
 
-fn usage(key: &str) {
-    print!("rpw ");
-    match key {
-        "unlock" => print!("unlock"),
-        "get" => print!("get <alias>"),
-        "alias" => print!("alias <name> <alias>"),
-        _ => print!("unlock | alias | get"),
-    }
-    println!("");
-}
-
 fn unlock() {
     let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
     let session = store::unlock(&pass);
@@ -82,7 +71,19 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
     };
 }
 
-fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
+fn usage(key: &str) {
+    print!("rpw ");
+    match key {
+        "unlock" => print!("unlock"),
+        "get" => print!("get <alias>"),
+        "alias" => print!("alias <name> <alias>"),
+        _ => print!("unlock | alias | get"),
+    }
+    println!("");
+}
+
+
+fn run_command(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     if args.len() < 2 {
         usage("");
         return;
@@ -104,7 +105,7 @@ fn main() -> Result<(), &'static str> {
 
     std::fs::create_dir_all(&dir).expect("Failed to create rpw dir");
     jconf::init(&path).expect("Failed to create rpw config");
-    rpw_cmd(&mut pws, args);
+    run_command(&mut pws, args);
     jconf::write(&path, pws).unwrap();
     Ok(())
 }
