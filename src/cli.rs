@@ -5,7 +5,7 @@ pub fn error(msg: &str) {
     println!("Error: {}", msg);
 }
 
-pub fn prompt_yesorno(msg: &str) -> bool {
+pub fn yesorno(msg: &str) -> bool {
     let mut ans = String::new();
     println!("{} [y/n]", msg);
     stdin()
@@ -17,7 +17,7 @@ pub fn prompt_yesorno(msg: &str) -> bool {
         "n" | "no" => false,
         _ => {
             println!("Please enter y or n");
-            prompt_yesorno(msg)
+            yesorno(msg)
         }
     }
 }
