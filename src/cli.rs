@@ -11,6 +11,7 @@ pub fn prompt_yesorno(msg: &str) -> bool {
     stdin()
         .read_line(&mut ans)
         .expect("Failed reading from stdin");
+
     match ans.to_ascii_lowercase().replace("\n", "").as_str() {
         "y" | "yes" => true,
         "n" | "no" => false,
