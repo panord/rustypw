@@ -44,10 +44,8 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
     }
 
     let alias: &str = &_args[2];
-    let id: &str = store::get_id(alias, pws)
-        .expect(format!("Could not find id corresponding to '{}'", alias).as_str());
-
     let session: String = session::load_session();
+    let pw = store::get_pw_by_alias(&pws, &alias, &session);
 
     let mut clip = Command::new("xclip")
         .stdin(std::process::Stdio::piped())
@@ -56,7 +54,6 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
         .spawn()
         .expect("Failed getting pw");
 
-    let pw = store::get_pw(&id, &session);
     match pw {
         Ok(pw) => {
             clip.stdin
@@ -93,7 +90,7 @@ fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
 
     match args[1].as_ref() {
         "unlock" => unlock(),
-        "get" => get(&pws, args),
+        "get" => get(pws, args),
         "alias" => alias(pws, args),
         _ => println!("Unknown command {} not implemented", args[1]),
     }
