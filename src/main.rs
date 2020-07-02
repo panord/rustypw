@@ -99,14 +99,11 @@ fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
     let dir = dirs::home_dir().unwrap().join(".rpw.d");
-
-    std::fs::create_dir_all(&dir).expect("Failed to create rpw dir");
-
     let path = dir.join("rusty.db");
-
-    jconf::init(&path).expect("Failed to create rpw config");
     let mut pws: Vec<PwEntry> = jconf::read(&path).unwrap();
 
+    std::fs::create_dir_all(&dir).expect("Failed to create rpw dir");
+    jconf::init(&path).expect("Failed to create rpw config");
     rpw_cmd(&mut pws, args);
     jconf::write(&path, pws).unwrap();
     Ok(())
