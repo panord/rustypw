@@ -58,14 +58,6 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
         .expect(format!("Could not find id corresponding to '{}'", alias).as_str());
 
     let session: String = session::load_session();
-    let out = Command::new("bw")
-        .arg("get")
-        .arg("password")
-        .arg(id)
-        .arg("--session")
-        .arg(session)
-        .output()
-        .expect("Failed getting pw");
 
     let mut clip = Command::new("xclip")
         .stdin(std::process::Stdio::piped())
@@ -74,11 +66,17 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
         .spawn()
         .expect("Failed getting pw");
 
-    clip.stdin
-        .as_mut()
-        .unwrap()
-        .write_all(&out.stdout)
-        .expect("Failed to open stdin");
+    let pw = store::get(&id, &session);
+    match pw {
+        Ok(pw) => {
+            clip.stdin
+                .as_mut()
+                .unwrap()
+                .write_all(pw.as_bytes())
+                .expect("Failed to open stdin");
+        },
+        Err(msg) => cli::error(&msg),
+    }
 }
 
 fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
