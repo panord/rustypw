@@ -82,7 +82,6 @@ fn usage(key: &str) {
     println!("");
 }
 
-
 fn run_command(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     if args.len() < 2 {
         usage("");
