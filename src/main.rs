@@ -87,32 +87,25 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
 
     let name: &str = &_args[2];
     let alias: &str = &_args[3];
+    let session: String = session::load_session();
 
     if get_id(alias, pws).is_ok() {
         println!("Alias already known");
         return;
     }
+    match store::get_item_id(name, &session) {
+        Ok(id) => {
+            println!("{}={}", alias, id);
+            serde_json::from_str::<BwID>(&id).expect("fail").id;
+            let entry = PwEntry {
+                id: id,
+                alias: alias.to_string(),
+            };
+            pws.push(entry);
+        },
+        Err(msg) => cli::error(&msg),
+    }
 
-    let session: String = session::load_session();
-    let json = Command::new("bw")
-        .arg("get")
-        .arg("item")
-        .arg(name)
-        .arg("--session")
-        .arg(session)
-        .arg("--pretty")
-        .output()
-        .expect("Failed aliasing");
-
-    let id = serde_json::from_slice::<BwID>(&json.stdout)
-        .expect("Failed getting id")
-        .id;
-    println!("{}={}", alias, id);
-    let entry = PwEntry {
-        id: id,
-        alias: alias.to_string(),
-    };
-    pws.push(entry);
 }
 
 fn rpw_cmd(pws: &mut Vec<PwEntry>, args: Vec<String>) {
