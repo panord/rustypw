@@ -1,6 +1,4 @@
 use std::env;
-use std::io::prelude::*;
-use std::process::Command;
 use std::result::Result;
 use std::string::String;
 extern crate rpassword;
@@ -34,23 +32,9 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
 
     let alias: &str = &_args[2];
     let session: String = session::load_session();
-    let pw = store::get_pw_by_alias(&pws, &alias, &session);
 
-    let mut clip = Command::new("xclip")
-        .stdin(std::process::Stdio::piped())
-        .arg("-selection")
-        .arg("clipboard")
-        .spawn()
-        .expect("Failed getting pw");
-
-    match pw {
-        Ok(pw) => {
-            clip.stdin
-                .as_mut()
-                .unwrap()
-                .write_all(pw.as_bytes())
-                .expect("Failed to open stdin");
-        }
+    match store::get_pw_by_alias(&pws, &alias, &session) {
+        Ok(pw) => cli::xclip::to_clipboard(&pw),
         Err(msg) => cli::error(&msg),
     }
 }

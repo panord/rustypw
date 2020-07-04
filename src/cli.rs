@@ -21,3 +21,23 @@ pub fn yesorno(msg: &str) -> bool {
         }
     }
 }
+
+pub mod xclip {
+    use std::io::prelude::*;
+    use std::process::Command;
+
+    pub fn to_clipboard(s: &str) {
+        let mut clip = Command::new("xclip")
+            .stdin(std::process::Stdio::piped())
+            .arg("-selection")
+            .arg("clipboard")
+            .spawn()
+            .expect("Failed getting pw");
+
+        clip.stdin
+            .as_mut()
+            .unwrap()
+            .write_all(s.as_bytes())
+            .expect("Failed to open stdin");
+    }
+}
