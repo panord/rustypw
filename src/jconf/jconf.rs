@@ -4,13 +4,17 @@ use std::path::Path;
 use crate::cli;
 use crate::jconf::*;
 
-fn db_create_if_yes(fname: &Path) -> bool {
+fn create(fname: &Path) {
+    println!("Creating {}", fname.display());
+    File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
+}
+
+fn create_interactive(fname: &Path) -> bool {
     println!("Could not find database {}", fname.display());
     if !cli::yesorno(&format!("Would you like to create {} ?", fname.display())) {
         return false;
     }
-    println!("Creating {}", fname.display());
-    File::create(fname).expect(&format!("Failed to create database {}", fname.display()));
+    create(fname);
     return true;
 }
 
@@ -34,7 +38,7 @@ pub fn init(fname: &Path) -> Result<(), String> {
     match File::open(&fname) {
         Ok(_) => Ok(()),
         Err(_) => {
-            db_create_if_yes(&fname);
+            create_interactive(&fname);
             write(&fname, vec![])?;
             read(&fname)?;
             Ok(())
