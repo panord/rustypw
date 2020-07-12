@@ -65,6 +65,15 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
     };
 }
 
+fn phrase(args: Vec<String>) {
+    if args.len() != 3 {
+        usage("phrase");
+        return;
+    }
+
+    let _len: u8 = args[2].parse().expect("invalid phrase length");
+}
+
 fn usage(key: &str) {
     print!("rpw ");
     match key {
@@ -72,7 +81,8 @@ fn usage(key: &str) {
         "unlock" => print!("unlock"),
         "get" => print!("get <alias>"),
         "alias" => print!("alias <name> <alias>"),
-        _ => print!("unlock | alias | get"),
+        "phrase" => print!("phrase <length>"),
+        _ => print!("lock|unlock|get|alias|phrase"),
     }
     println!("");
 }
@@ -88,6 +98,7 @@ fn run_command(pws: &mut Vec<PwEntry>, args: Vec<String>) {
         "unlock" => unlock(),
         "get" => get(pws, args),
         "alias" => alias(pws, args),
+        "phrase" => phrase(args),
         _ => println!("Unknown command {} not implemented", args[1]),
     }
 }
