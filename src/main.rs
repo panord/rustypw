@@ -12,13 +12,23 @@ extern crate dirs;
 
 use jconf::PwEntry;
 
+fn lock() {
+    match store::lock() {
+        Ok(s) => {
+            println!("Locking session...\n{}", s);
+            session::delete();
+        },
+        Err(s) => cli::error(&s),
+    };
+}
+
 fn unlock() {
     let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
     let session = store::unlock(&pass);
     match session {
         Ok(s) => {
             println!("Storing session...\n{}", s);
-            session::store_session(&s);
+            session::store(&s);
         }
         Err(s) => cli::error(&s),
     }
@@ -31,7 +41,7 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
     }
 
     let alias: &str = &_args[2];
-    let session: String = session::load_session();
+    let session: String = session::load();
 
     match store::get_pw_by_alias(&pws, &alias, &session) {
         Ok(pw) => cli::xclip::to_clipboard(&pw),
@@ -47,7 +57,7 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
 
     let name: &str = &_args[2];
     let alias: &str = &_args[3];
-    let session: String = session::load_session();
+    let session: String = session::load();
 
     match store::alias(pws, name, alias, &session) {
         Ok(msg) => println!("{}", msg),
@@ -58,6 +68,7 @@ fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
 fn usage(key: &str) {
     print!("rpw ");
     match key {
+        "lock" => print!("lock"),
         "unlock" => print!("unlock"),
         "get" => print!("get <alias>"),
         "alias" => print!("alias <name> <alias>"),
@@ -73,6 +84,7 @@ fn run_command(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     }
 
     match args[1].as_ref() {
+        "lock" => lock(),
         "unlock" => unlock(),
         "get" => get(pws, args),
         "alias" => alias(pws, args),

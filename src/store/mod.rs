@@ -5,6 +5,18 @@ use std::string::String;
 use crate::jconf::BwID;
 use crate::jconf::PwEntry;
 
+pub fn lock() -> Result<String, String> {
+    let out = Command::new("bw")
+        .arg("lock")
+        .output()
+        .expect("Failed to set noisy terminal");
+
+    match out.status.code().unwrap() {
+        0 => Ok(std::str::from_utf8(&out.stdout).unwrap().to_string()),
+        _ => Err(std::str::from_utf8(&out.stderr).unwrap().to_string()),
+    }
+}
+
 pub fn unlock(pass: &str) -> Result<String, String> {
     let out = Command::new("bw")
         .arg("unlock")
