@@ -80,15 +80,32 @@ fn run_command(pws: &mut Vec<PwEntry>, args: Vec<String>) {
     }
 }
 
+const DB_FNAME: &'static str = "rusty.db";
+const RPW_DIR: &'static str = ".rpw.d";
+
+fn init_rpw(rpw_d: &std::path::Path) {
+    std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
+
+    let path = rpw_d.join(&DB_FNAME);
+    jconf::init(&path).expect("Failed to create rpw config");
+}
+
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
-    let dir = dirs::home_dir().unwrap().join(".rpw.d");
-    let path = dir.join("rusty.db");
-    let mut pws: Vec<PwEntry> = jconf::read(&path).unwrap();
+    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
+    let path = rpw_d.join(&DB_FNAME);
 
-    std::fs::create_dir_all(&dir).expect("Failed to create rpw dir");
-    jconf::init(&path).expect("Failed to create rpw config");
+    let mut pws: Vec<PwEntry>;
+
+    match jconf::read(&path) {
+        Ok(db) => pws = db,
+        Err(_) => {
+            init_rpw(&rpw_d);
+            pws = jconf::read(&path).expect("Failed to read db after initialize");
+        }
+    };
+
     run_command(&mut pws, args);
-    jconf::write(&path, pws).unwrap();
+    jconf::write(&rpw_d.join(&DB_FNAME), pws).unwrap();
     Ok(())
 }
