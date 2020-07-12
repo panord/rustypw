@@ -62,8 +62,7 @@ fn get_id<'a>(alias: &str, pws: &'a Vec<PwEntry>) -> Result<&'a str, String> {
 }
 
 pub fn get_pw_by_alias(pws: &Vec<PwEntry>, alias: &str, session: &str) -> Result<String, String> {
-    let id = get_id(alias, pws);
-    match id {
+    match get_id(alias, pws) {
         Ok(id) => get_pw(&id, &session),
         Err(msg) => Err(msg),
     }

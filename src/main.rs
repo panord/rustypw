@@ -36,7 +36,7 @@ fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
     match store::get_pw_by_alias(&pws, &alias, &session) {
         Ok(pw) => cli::xclip::to_clipboard(&pw),
         Err(msg) => cli::error(&msg),
-    }
+    };
 }
 
 fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {

@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::path::Path;
-
 use crate::cli;
 use crate::jconf::*;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
 
 fn create(fname: &Path) {
     println!("Creating {}", fname.display());
@@ -27,10 +27,13 @@ pub fn read(fname: &Path) -> Result<Vec<PwEntry>, String> {
 }
 
 pub fn write(fname: &Path, entries: Vec<PwEntry>) -> Result<(), String> {
-    serde_json::to_string(&entries).expect("Failed to serialize passwords");
+    let json = serde_json::to_string(&entries).expect("Failed to serialize passwords");
 
     File::create(fname)
-        .and_then(|_| Ok(()))
+        .and_then(|mut f| {
+            f.write_all(&json.as_bytes()).expect("Failed to write file");
+            Ok(())
+        })
         .or_else(|_| Err(format!("Failed to create database {}", fname.display())))
 }
 
