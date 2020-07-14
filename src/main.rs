@@ -3,6 +3,7 @@ use std::result::Result;
 use std::string::String;
 extern crate rpassword;
 
+mod bw;
 mod cli;
 mod jconf;
 mod session;
@@ -13,18 +14,18 @@ extern crate dirs;
 use jconf::PwEntry;
 
 fn lock() {
-    match store::lock() {
+    match bw::lock() {
         Ok(s) => {
             println!("Locking session...\n{}", s);
             session::delete();
-        },
+        }
         Err(s) => cli::error(&s),
     };
 }
 
 fn unlock() {
     let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
-    let session = store::unlock(&pass);
+    let session = bw::unlock(&pass);
     match session {
         Ok(s) => {
             println!("Storing session...\n{}", s);
@@ -71,7 +72,12 @@ fn phrase(args: Vec<String>) {
         return;
     }
 
-    let _len: u8 = args[2].parse().expect("invalid phrase length");
+    let len: u8 = args[2].parse().expect("invalid phrase length");
+
+    match bw::phrase(len) {
+        Ok(msg) => println!("{}", msg),
+        Err(msg) => cli::error(&msg),
+    };
 }
 
 fn usage(key: &str) {
