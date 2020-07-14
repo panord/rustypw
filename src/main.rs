@@ -3,15 +3,15 @@ use std::result::Result;
 use std::string::String;
 extern crate rpassword;
 
-mod bw;
 mod cli;
 mod jconf;
 mod session;
 mod store;
+use store::bw;
 
 extern crate dirs;
 
-use jconf::PwEntry;
+use store::PwEntry;
 
 fn lock() {
     match bw::lock() {

@@ -1,10 +1,20 @@
 use std::result::Result;
 use std::string::String;
 
-use crate::jconf::BwID;
-use crate::jconf::PwEntry;
+pub mod bw;
 
-use crate::bw;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct PwEntry {
+    pub alias: String,
+    pub id: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BwID {
+    pub id: String,
+}
 
 fn get_id<'a>(alias: &str, pws: &'a Vec<PwEntry>) -> Result<&'a str, String> {
     for pw in pws {
