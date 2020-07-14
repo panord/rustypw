@@ -29,7 +29,7 @@ pub fn read(fname: &Path) -> Result<Vec<PwEntry>, String> {
 }
 
 pub fn write(fname: &Path, entries: Vec<PwEntry>) -> Result<(), String> {
-    let json = serde_json::to_string(&entries).expect("Failed to serialize passwords");
+    let json = serde_json::to_string_pretty(&entries).expect("Failed to serialize passwords");
 
     File::create(fname)
         .and_then(|mut f| {
