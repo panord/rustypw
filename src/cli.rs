@@ -21,6 +21,9 @@ pub fn yesorno(msg: &str) -> bool {
         }
     }
 }
+pub fn password(msg: &str) -> String {
+    rpassword::prompt_password_stdout(msg).unwrap()
+}
 
 pub mod xclip {
     use std::io::prelude::*;

@@ -3,64 +3,60 @@ use std::result::Result;
 use std::string::String;
 extern crate rpassword;
 
+mod bw;
 mod cli;
 mod jconf;
-mod session;
 mod store;
-use store::bw;
 
 extern crate dirs;
 
+use store::bw::BwStore;
 use store::PwEntry;
+use store::PwStore;
 
-fn lock() {
-    match bw::lock() {
+fn lock(store: &mut dyn PwStore) {
+    match store.lock() {
         Ok(s) => {
             println!("Locking session...\n{}", s);
-            session::delete();
         }
         Err(s) => cli::error(&s),
     };
 }
 
-fn unlock() {
-    let pass = rpassword::prompt_password_stdout("Please enter your password (hidden):").unwrap();
-    let session = bw::unlock(&pass);
-    match session {
+fn unlock(store: &mut dyn PwStore) {
+    let pass = cli::password("Please enter your password (hidden):");
+    match store.unlock(&pass) {
         Ok(s) => {
             println!("Storing session...\n{}", s);
-            session::store(&s);
         }
         Err(s) => cli::error(&s),
     }
 }
 
-fn get(pws: &Vec<PwEntry>, _args: Vec<String>) {
+fn get(store: &dyn PwStore, _args: Vec<String>) {
     if _args.len() != 3 {
         usage("get");
         return;
     }
 
     let alias: &str = &_args[2];
-    let session: String = session::load();
 
-    match store::get_pw_by_alias(&pws, &alias, &session) {
+    match store.load(&alias) {
         Ok(pw) => cli::xclip::to_clipboard(&pw),
         Err(msg) => cli::error(&msg),
     };
 }
 
-fn alias(pws: &mut Vec<PwEntry>, _args: Vec<String>) {
+fn alias(store: &mut dyn PwStore, _args: Vec<String>) {
     if _args.len() != 4 {
         usage("alias");
         return;
     }
 
-    let name: &str = &_args[2];
+    let rid: &str = &_args[2];
     let alias: &str = &_args[3];
-    let session: String = session::load();
 
-    match store::alias(pws, name, alias, &session) {
+    match store.store(rid, alias) {
         Ok(msg) => println!("{}", msg),
         Err(msg) => cli::error(&msg),
     };
@@ -86,24 +82,24 @@ fn usage(key: &str) {
         "lock" => print!("lock"),
         "unlock" => print!("unlock"),
         "get" => print!("get <alias>"),
-        "alias" => print!("alias <name> <alias>"),
+        "alias" => print!("alias <id> <alias>"),
         "phrase" => print!("phrase <length>"),
         _ => print!("lock|unlock|get|alias|phrase"),
     }
     println!("");
 }
 
-fn run_command(pws: &mut Vec<PwEntry>, args: Vec<String>) {
+fn run_command(store: &mut dyn PwStore, args: Vec<String>) {
     if args.len() < 2 {
         usage("");
         return;
     }
 
     match args[1].as_ref() {
-        "lock" => lock(),
-        "unlock" => unlock(),
-        "get" => get(pws, args),
-        "alias" => alias(pws, args),
+        "lock" => lock(store),
+        "unlock" => unlock(store),
+        "get" => get(store, args),
+        "alias" => alias(store, args),
         "phrase" => phrase(args),
         _ => println!("Unknown command {} not implemented", args[1]),
     }
@@ -124,7 +120,7 @@ fn main() -> Result<(), &'static str> {
     let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
     let path = rpw_d.join(&DB_FNAME);
 
-    let mut pws: Vec<PwEntry>;
+    let pws: Vec<PwEntry>;
 
     match jconf::read(&path) {
         Ok(db) => pws = db,
@@ -133,8 +129,8 @@ fn main() -> Result<(), &'static str> {
             pws = jconf::read(&path).expect("Failed to read db after initialize");
         }
     };
-
-    run_command(&mut pws, args);
-    jconf::write(&rpw_d.join(&DB_FNAME), pws).unwrap();
+    let mut store = BwStore { pws: pws };
+    run_command(&mut store, args);
+    jconf::write(&rpw_d.join(&DB_FNAME), store.pws).unwrap();
     Ok(())
 }
