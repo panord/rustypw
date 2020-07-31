@@ -33,9 +33,9 @@ fn unlock(store: &mut dyn PwStore) {
     }
 }
 
-fn get(store: &dyn PwStore, _args: Vec<String>) {
+fn get(store: &dyn PwStore, _args: &[String]) {
     if _args.len() != 3 {
-        usage("get");
+        usage_remote("get");
         return;
     }
 
@@ -47,9 +47,9 @@ fn get(store: &dyn PwStore, _args: Vec<String>) {
     };
 }
 
-fn alias(store: &mut dyn PwStore, _args: Vec<String>) {
+fn alias(store: &mut dyn PwStore, _args: &[String]) {
     if _args.len() != 4 {
-        usage("alias");
+        usage_remote("alias");
         return;
     }
 
@@ -62,9 +62,9 @@ fn alias(store: &mut dyn PwStore, _args: Vec<String>) {
     };
 }
 
-fn phrase(args: Vec<String>) {
+fn phrase(args: &[String]) {
     if args.len() != 3 {
-        usage("phrase");
+        usage_remote("phrase");
         return;
     }
 
@@ -77,6 +77,13 @@ fn phrase(args: Vec<String>) {
 }
 
 fn usage(key: &str) {
+    match key {
+        _ => print!("local | remote"),
+    }
+    println!("");
+}
+
+fn usage_remote(key: &str) {
     print!("rpw ");
     match key {
         "lock" => print!("lock"),
@@ -84,24 +91,36 @@ fn usage(key: &str) {
         "get" => print!("get <alias>"),
         "alias" => print!("alias <id> <alias>"),
         "phrase" => print!("phrase <length>"),
-        _ => print!("lock|unlock|get|alias|phrase"),
+        _ => print!("remote lock|unlock|get|alias|phrase"),
     }
     println!("");
 }
 
-fn run_command(store: &mut dyn PwStore, args: Vec<String>) {
+fn run_remote(store: &mut dyn PwStore, args: &[String]) {
     if args.len() < 2 {
         usage("");
         return;
     }
-
     match args[1].as_ref() {
         "lock" => lock(store),
         "unlock" => unlock(store),
-        "get" => get(store, args),
-        "alias" => alias(store, args),
-        "phrase" => phrase(args),
-        _ => println!("Unknown command {} not implemented", args[1]),
+        "get" => get(store, &args),
+        "alias" => alias(store, &args),
+        "phrase" => phrase(&args),
+        "help" => usage_remote(""),
+        _ => println!("Unknown command or context {} not implemented", args[1]),
+    }
+}
+
+fn run_command(store: &mut dyn PwStore, args: &[String]) {
+    if args.len() < 2 {
+        usage("");
+        return;
+    }
+    match args[1].as_ref() {
+        "remote" => run_remote(store, &args[1..]),
+        "help" => usage(""),
+        _ => println!("Unknown command or context {} not implemented", args[1]),
     }
 }
 
@@ -130,7 +149,7 @@ fn main() -> Result<(), &'static str> {
         }
     };
     let mut store = BwStore { pws: pws };
-    run_command(&mut store, args);
+    run_command(&mut store, &args);
     jconf::write(&rpw_d.join(&DB_FNAME), store.pws).unwrap();
     Ok(())
 }
