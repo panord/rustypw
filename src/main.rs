@@ -12,9 +12,8 @@ extern crate dirs;
 
 use store::bw::BwStore;
 use store::PwEntry;
-use store::PwStore;
 
-fn lock(store: &mut dyn PwStore) {
+fn lock(store: &mut BwStore) {
     match store.lock() {
         Ok(s) => {
             println!("Locking session...\n{}", s);
@@ -23,7 +22,7 @@ fn lock(store: &mut dyn PwStore) {
     };
 }
 
-fn unlock(store: &mut dyn PwStore) {
+fn unlock(store: &mut BwStore) {
     let pass = cli::password("Please enter your password (hidden):");
     match store.unlock(&pass) {
         Ok(s) => {
@@ -33,7 +32,7 @@ fn unlock(store: &mut dyn PwStore) {
     }
 }
 
-fn get(store: &dyn PwStore, _args: &[String]) {
+fn get(store: &BwStore, _args: &[String]) {
     if _args.len() != 3 {
         usage_remote("get");
         return;
@@ -47,7 +46,7 @@ fn get(store: &dyn PwStore, _args: &[String]) {
     };
 }
 
-fn alias(store: &mut dyn PwStore, _args: &[String]) {
+fn alias(store: &mut BwStore, _args: &[String]) {
     if _args.len() != 4 {
         usage_remote("alias");
         return;
@@ -96,29 +95,67 @@ fn usage_remote(key: &str) {
     println!("");
 }
 
-fn run_remote(store: &mut dyn PwStore, args: &[String]) {
+fn usage_local(key: &str) {
+    match key {
+        _ => println!("new|get"),
+    }
+}
+
+fn run_local(args: &[String]) {
     if args.len() < 2 {
-        usage("");
+        usage_local("");
         return;
     }
+
     match args[1].as_ref() {
-        "lock" => lock(store),
-        "unlock" => unlock(store),
-        "get" => get(store, &args),
-        "alias" => alias(store, &args),
-        "phrase" => phrase(&args),
-        "help" => usage_remote(""),
+        "" => println!("Not implemented"),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }
 }
 
-fn run_command(store: &mut dyn PwStore, args: &[String]) {
+fn run_remote(args: &[String]) {
+    if args.len() < 2 {
+        usage_remote("");
+        return;
+    }
+
+    // TODO: Move to remote init?
+    let pws: Vec<PwEntry>;
+    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
+    let path = rpw_d.join(&DB_FNAME);
+    match jconf::read(&path) {
+        Ok(db) => pws = db,
+        Err(_) => {
+            init_rpw(&rpw_d);
+            pws = jconf::read(&path).expect("Failed to read db after initialize");
+        }
+    };
+
+    let mut store = BwStore { pws: pws };
+
+    match args[1].as_ref() {
+        "lock" => lock(&mut store),
+        "unlock" => unlock(&mut store),
+        "get" => get(&mut store, &args),
+        "alias" => alias(&mut store, &args),
+        "phrase" => phrase(&args),
+        "help" => usage_remote(""),
+        _ => println!("Unknown command or context {} not implemented", args[1]),
+    }
+
+    // TODO: Move to.. elsewhere???
+    // intit -> cmd -> init
+    jconf::write(&rpw_d.join(&DB_FNAME), store.pws).unwrap();
+}
+
+fn run_command(args: &[String]) {
     if args.len() < 2 {
         usage("");
         return;
     }
     match args[1].as_ref() {
-        "remote" => run_remote(store, &args[1..]),
+        "remote" => run_remote(&args[1..]),
+        "local" => run_local(&args[1..]),
         "help" => usage(""),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }
@@ -129,27 +166,13 @@ const RPW_DIR: &'static str = ".rpw.d";
 
 fn init_rpw(rpw_d: &std::path::Path) {
     std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
-
     let path = rpw_d.join(&DB_FNAME);
     jconf::init(&path).expect("Failed to create rpw config");
 }
 
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
-    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
-    let path = rpw_d.join(&DB_FNAME);
 
-    let pws: Vec<PwEntry>;
-
-    match jconf::read(&path) {
-        Ok(db) => pws = db,
-        Err(_) => {
-            init_rpw(&rpw_d);
-            pws = jconf::read(&path).expect("Failed to read db after initialize");
-        }
-    };
-    let mut store = BwStore { pws: pws };
-    run_command(&mut store, &args);
-    jconf::write(&rpw_d.join(&DB_FNAME), store.pws).unwrap();
+    run_command(&args);
     Ok(())
 }

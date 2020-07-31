@@ -51,10 +51,8 @@ impl BwStore {
         }
         Err(format!("Could not find id corresponding to '{}'\n", alias))
     }
-}
 
-impl PwStore for BwStore {
-    fn lock(&mut self) -> Result<String, String> {
+    pub fn lock(&mut self) -> Result<String, String> {
         session::delete();
         let out = Command::new("bw")
             .arg("lock")
@@ -67,7 +65,7 @@ impl PwStore for BwStore {
         }
     }
 
-    fn unlock(&mut self, pass: &str) -> Result<String, String> {
+    pub fn unlock(&mut self, pass: &str) -> Result<String, String> {
         let out = Command::new("bw")
             .arg("unlock")
             .arg("--raw")
@@ -88,7 +86,7 @@ impl PwStore for BwStore {
 
     /* The semantics of store is confusing as  it is supposed to be key->value
      * in the case of remote cache it is local_key->remote_key->value */
-    fn store(&mut self, name: &str, alias: &str) -> Result<String, String> {
+    pub fn store(&mut self, name: &str, alias: &str) -> Result<String, String> {
         if self.get_id(alias).is_ok() {
             return Ok(format!("Alias {} already known", alias));
         }
@@ -107,7 +105,7 @@ impl PwStore for BwStore {
         }
     }
 
-    fn load(&self, id: &str) -> Result<String, String> {
+    pub fn load(&self, id: &str) -> Result<String, String> {
         match self.get_id(id) {
             Ok(rid) => get_pw(&rid, &session::load()),
             Err(msg) => Err(msg),
