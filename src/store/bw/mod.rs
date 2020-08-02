@@ -6,7 +6,7 @@ use std::result::Result;
 use std::string::String;
 
 pub struct BwStore {
-    pub pws: Vec<PwEntry>,
+    pub pws: Vec<PwAlias>,
 }
 
 fn get_pw(id: &str, session: &str) -> Result<String, String> {
@@ -93,7 +93,7 @@ impl BwStore {
 
         match get_pw_id(name, &session::load()?) {
             Ok(id) => {
-                let entry = PwEntry {
+                let entry = PwAlias {
                     id: serde_json::from_str::<BwID>(&id).expect("fail").id,
                     alias: alias.to_string(),
                 };

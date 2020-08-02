@@ -4,7 +4,7 @@ use crate::store;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use store::PwEntry;
+use store::PwAlias;
 
 fn create(fname: &Path) {
     println!("Creating {}", fname.display());
@@ -20,15 +20,15 @@ fn create_interactive(fname: &Path) -> bool {
     return true;
 }
 
-pub fn read(fname: &Path) -> Result<Vec<PwEntry>, String> {
+pub fn read(fname: &Path) -> Result<Vec<PwAlias>, String> {
     match File::open(&fname) {
-        Ok(f) => Ok(serde_json::from_reader::<File, Vec<PwEntry>>(f)
+        Ok(f) => Ok(serde_json::from_reader::<File, Vec<PwAlias>>(f)
             .expect("Failed deserializing database")),
         Err(_) => Err("Failed reading databse".to_string()),
     }
 }
 
-pub fn write(fname: &Path, entries: Vec<PwEntry>) -> Result<(), String> {
+pub fn write(fname: &Path, entries: Vec<PwAlias>) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&entries).expect("Failed to serialize passwords");
 
     File::create(fname)

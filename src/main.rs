@@ -11,7 +11,7 @@ mod store;
 extern crate dirs;
 
 use store::bw::BwStore;
-use store::PwEntry;
+use store::PwAlias;
 
 fn lock(store: &mut BwStore) {
     match store.lock() {
@@ -120,7 +120,7 @@ fn run_remote(args: &[String]) {
     }
 
     // TODO: Move to remote init?
-    let pws: Vec<PwEntry>;
+    let pws: Vec<PwAlias>;
     let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
     let path = rpw_d.join(&DB_FNAME);
     match jconf::read(&path) {
