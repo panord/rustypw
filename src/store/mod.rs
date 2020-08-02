@@ -1,16 +1,4 @@
-use std::string::String;
-
 pub mod bw;
+pub mod local;
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-pub struct PwAlias {
-    pub id: String,
-    pub alias: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct BwID {
-    pub id: String,
-}
+pub use self::bw::BwStore;

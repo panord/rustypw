@@ -17,7 +17,7 @@ pub fn load() -> Result<String, String> {
     let fname: &Path = Path::new("/tmp/rpw-session");
     match std::fs::read_to_string(fname) {
         Ok(s) => Ok(s),
-        Err(_) => Err("Failed to load session".to_string())
+        Err(_) => Err("Failed to load session".to_string()),
     }
 }
 

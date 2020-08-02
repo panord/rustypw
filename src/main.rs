@@ -1,17 +1,12 @@
+extern crate rpassword;
+mod cli;
+mod store;
+
 use std::env;
 use std::result::Result;
 use std::string::String;
-extern crate rpassword;
 
-mod bw;
-mod cli;
-mod jconf;
-mod store;
-
-extern crate dirs;
-
-use store::bw::BwStore;
-use store::PwAlias;
+use store::BwStore;
 
 fn lock(store: &mut BwStore) {
     match store.lock() {
@@ -63,13 +58,13 @@ fn alias(store: &mut BwStore, _args: &[String]) {
 
 fn phrase(args: &[String]) {
     if args.len() != 3 {
-        usage_remote("phrase");
+        usage_local("phrase");
         return;
     }
 
     let len: u8 = args[2].parse().expect("invalid phrase length");
 
-    match bw::phrase(len) {
+    match store::bw::phrase(len) {
         Ok(msg) => println!("{}", msg),
         Err(msg) => cli::error(&msg),
     };
@@ -89,7 +84,6 @@ fn usage_remote(key: &str) {
         "unlock" => print!("unlock"),
         "get" => print!("get <alias>"),
         "alias" => print!("alias <id> <alias>"),
-        "phrase" => print!("phrase <length>"),
         _ => print!("remote lock|unlock|get|alias|phrase"),
     }
     println!("");
@@ -97,8 +91,43 @@ fn usage_remote(key: &str) {
 
 fn usage_local(key: &str) {
     match key {
-        _ => println!("new|get"),
+        "new" => print!("new <vault_name>"),
+        "get" => print!("get <vault_name> <id>"),
+        "add" => print!("add phrase <length>\n\tpassword -- Not implemented"),
+        _ => println!("new|get|add"),
     }
+}
+
+fn local_new(args: &[String]) {
+    if args.len() < 2 {
+        usage_local("new");
+        return;
+    }
+
+    let pass = cli::password("Please choose your password (hidden):");
+    let vfied = cli::password("Please verify your password (hidden):");
+
+    let name: &str = &args[1];
+
+    match store::local::new(&name, &pass, &vfied) {
+        Ok(_) => println!("{}", format!("New vault {} created", name)),
+        Err(msg) => cli::error(&msg),
+    }
+}
+
+fn local_get(args: &[String]) {
+    if args.len() < 3 {
+        usage_local("get");
+        return;
+    }
+    let vault: &str = &args[1];
+    let id: &str = &args[2];
+    let pass = cli::password("Please enter your password (hidden):");
+
+    match store::local::get_pw(vault, id, &pass) {
+        Ok(pw) => cli::xclip::to_clipboard(&pw),
+        Err(msg) => cli::error(&msg),
+    };
 }
 
 fn run_local(args: &[String]) {
@@ -108,7 +137,8 @@ fn run_local(args: &[String]) {
     }
 
     match args[1].as_ref() {
-        "" => println!("Not implemented"),
+        "new" => local_new(&args[1..]),
+        "get" => local_get(&args[1..]),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }
 }
@@ -119,33 +149,16 @@ fn run_remote(args: &[String]) {
         return;
     }
 
-    // TODO: Move to remote init?
-    let pws: Vec<PwAlias>;
-    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
-    let path = rpw_d.join(&DB_FNAME);
-    match jconf::read(&path) {
-        Ok(db) => pws = db,
-        Err(_) => {
-            init_rpw(&rpw_d);
-            pws = jconf::read(&path).expect("Failed to read db after initialize");
-        }
-    };
-
-    let mut store = BwStore { pws: pws };
-
+    let mut store = BwStore::new();
     match args[1].as_ref() {
         "lock" => lock(&mut store),
         "unlock" => unlock(&mut store),
         "get" => get(&mut store, &args),
-        "alias" => alias(&mut store, &args),
         "phrase" => phrase(&args),
+        "alias" => alias(&mut store, &args),
         "help" => usage_remote(""),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }
-
-    // TODO: Move to.. elsewhere???
-    // intit -> cmd -> init
-    jconf::write(&rpw_d.join(&DB_FNAME), store.pws).unwrap();
 }
 
 fn run_command(args: &[String]) {
@@ -159,15 +172,6 @@ fn run_command(args: &[String]) {
         "help" => usage(""),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }
-}
-
-const DB_FNAME: &'static str = "rusty.db";
-const RPW_DIR: &'static str = ".rpw.d";
-
-fn init_rpw(rpw_d: &std::path::Path) {
-    std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
-    let path = rpw_d.join(&DB_FNAME);
-    jconf::init(&path).expect("Failed to create rpw config");
 }
 
 fn main() -> Result<(), &'static str> {
