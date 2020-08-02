@@ -53,7 +53,7 @@ impl BwStore {
     }
 
     pub fn lock(&mut self) -> Result<String, String> {
-        session::delete();
+        session::delete()?;
         let out = Command::new("bw")
             .arg("lock")
             .output()
@@ -77,7 +77,7 @@ impl BwStore {
             0 => {
                 let session = std::str::from_utf8(&out.stdout).unwrap();
                 let msg = session.to_string();
-                session::store(session);
+                session::store(session)?;
                 Ok(msg)
             }
             _ => Err(std::str::from_utf8(&out.stderr).unwrap().to_string()),
@@ -91,7 +91,7 @@ impl BwStore {
             return Ok(format!("Alias {} already known", alias));
         }
 
-        match get_pw_id(name, &session::load()) {
+        match get_pw_id(name, &session::load()?) {
             Ok(id) => {
                 let entry = PwEntry {
                     id: serde_json::from_str::<BwID>(&id).expect("fail").id,
@@ -107,7 +107,7 @@ impl BwStore {
 
     pub fn load(&self, id: &str) -> Result<String, String> {
         match self.get_id(id) {
-            Ok(rid) => get_pw(&rid, &session::load()),
+            Ok(rid) => get_pw(&rid, &session::load()?),
             Err(msg) => Err(msg),
         }
     }
