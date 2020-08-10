@@ -94,8 +94,10 @@ fn usage_local(key: &str) {
         "new" => print!("new <vault_name>"),
         "get" => print!("get <vault_name> <id>"),
         "add" => print!("add <alias> <length>"),
+        "delete" => print!("delete <vault_name>"),
         _ => print!("new|get|add"),
     }
+    println!("");
 }
 
 fn local_new(args: &[String]) {
@@ -136,6 +138,18 @@ fn local_add(args: &[String]) {
     }
 }
 
+fn local_delete(args: &[String]) {
+    if args.len() < 2 {
+        usage_local("delete");
+        return;
+    }
+    let vault: &str = &args[1];
+    match store::local::delete(vault) {
+        Ok(_) => println!("Deleted vault {}", vault),
+        Err(msg) => cli::error(&msg),
+    }
+}
+
 fn local_get(args: &[String]) {
     if args.len() < 3 {
         usage_local("get");
@@ -162,6 +176,7 @@ fn run_local(args: &[String]) {
         "new" => local_new(&args[1..]),
         "get" => local_get(&args[1..]),
         "add" => local_add(&args[1..]),
+        "delete" => local_delete(&args[1..]),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }
 }

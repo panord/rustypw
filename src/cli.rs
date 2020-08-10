@@ -1,4 +1,6 @@
 use std::io::stdin;
+use std::io::stdout;
+use std::io::Write;
 use std::string::String;
 
 pub fn error(msg: &str) {
@@ -7,7 +9,10 @@ pub fn error(msg: &str) {
 
 pub fn yesorno(msg: &str) -> bool {
     let mut ans = String::new();
-    println!("{} [y/n]", msg);
+    stdout()
+        .write_all(format!("{} [y/n] ", msg).as_bytes())
+        .expect("Failed writing to stdout");
+    stdout().flush().expect("Failed to flush stdout");
     stdin()
         .read_line(&mut ans)
         .expect("Failed reading from stdin");
@@ -15,10 +20,7 @@ pub fn yesorno(msg: &str) -> bool {
     match ans.to_ascii_lowercase().replace("\n", "").as_str() {
         "y" | "yes" => true,
         "n" | "no" => false,
-        _ => {
-            println!("Please enter y or n");
-            yesorno(msg)
-        }
+        _ => yesorno("Please eneter y or n"),
     }
 }
 pub fn password(msg: &str) -> String {

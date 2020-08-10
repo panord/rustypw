@@ -1,6 +1,7 @@
 mod crypto;
 mod vault;
 
+use crate::cli;
 use openssl::symm::{decrypt, encrypt, Cipher};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -128,6 +129,16 @@ pub fn new(name: &str, pass: &str, vfied: &str) -> Result<(), String> {
         ),
         Err(_) => Err(format!("Failed creating new vault {}", name)),
     }
+}
+
+pub fn delete(name: &str) -> Result<(), String> {
+    if cli::yesorno(format!("Would you really like to delete the vault {}?", name).as_str())
+        && cli::yesorno("Are you reaaaaally sure? It's permanent.")
+    {
+        vault::delete(format!("{}{}", name, VAULT_EXT).as_str())?;
+        return Ok(());
+    }
+    return Err("Did not delete vault".to_string());
 }
 
 pub fn add(vault: &str, alias: &str, pass: &str, new_pass: &str) -> Result<String, String> {

@@ -1,4 +1,3 @@
-use std::fs::File;
 const RPW_DIR: &'static str = ".rpw.d";
 
 pub fn exists(name: &str) -> bool {
