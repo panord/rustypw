@@ -9,6 +9,7 @@ use std::path::Path;
 use std::string::String;
 
 const SALT_LEN: usize = 256;
+const IV_LEN: usize = 16;
 const VAULT_EXT: &'static str = ".vlt";
 const VAULT_ID: &'static str = "vault-token";
 const VAULT_TOKEN: &'static str = "all-is-well";
@@ -23,6 +24,7 @@ pub struct PwEntry {
 #[derive(Serialize, Deserialize)]
 pub struct LockedVault {
     pub name: String,
+    pub iv: Vec<u8>,
     pub salt: Vec<u8>,
     pub enc: Vec<u8>,
 }
@@ -37,9 +39,8 @@ impl LockedVault {
     pub fn unlock(&self, key: &[u8]) -> UnlockedVault {
         let cipher = Cipher::aes_256_cbc();
         let data = &self.enc;
-        // TODO: IV
-        let iv = b"\x00\x01\x02\x03\x04\x05\x06\x07\x00\x01\x02\x03\x04\x05\x06\x07";
-        let json = String::from_utf8(decrypt(cipher, key, Some(iv), data).unwrap()).unwrap();
+        let iv = &self.iv;
+        let json = String::from_utf8(decrypt(cipher, key, Some(&iv), data).unwrap()).unwrap();
         let passwords: Vec<PwEntry> = serde_json::from_str(&json).unwrap();
 
         UnlockedVault {
@@ -54,11 +55,14 @@ impl UnlockedVault {
     pub fn lock(&self, key: &[u8]) -> LockedVault {
         let cipher = Cipher::aes_256_cbc();
         let data = serde_json::to_string_pretty(&self.pws).expect("Failed to serialize passwords");
-        let iv = b"\x00\x01\x02\x03\x04\x05\x06\x07\x00\x01\x02\x03\x04\x05\x06\x07";
         let key = key;
-        let ciphertext = encrypt(cipher, key, Some(iv), data.as_bytes()).unwrap();
+
+        let mut iv = [0; IV_LEN];
+        crypto::rand_bytes(&mut iv);
+        let ciphertext = encrypt(cipher, key, Some(&iv), data.as_bytes()).unwrap();
         LockedVault {
             name: self.name.clone(),
+            iv: iv.to_vec(),
             salt: self.salt.to_vec(),
             enc: ciphertext,
         }
