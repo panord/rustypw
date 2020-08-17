@@ -93,8 +93,8 @@ fn usage_local(key: &str) {
     match key {
         "new" => print!("new <vault_name>"),
         "get" => print!("get <vault_name> <id>"),
-        "add" => print!("add phrase <length>\n\tpassword -- Not implemented"),
-        _ => println!("new|get|add"),
+        "add" => print!("add <alias> <length>"),
+        _ => print!("new|get|add"),
     }
 }
 
@@ -115,11 +115,33 @@ fn local_new(args: &[String]) {
     }
 }
 
+fn local_add(args: &[String]) {
+    if args.len() < 4 {
+        return usage_local("add");
+    }
+
+    let vault: &str = &args[1];
+    let alias: &str = &args[2];
+    let len: u8 = args[3].parse().expect("invalid phrase length");
+    let pass = cli::password("Please enter your password (hidden):");
+
+    match store::bw::phrase(len) {
+        Err(msg) => cli::error(&msg),
+        Ok(phrase) => {
+            match store::local::add(vault, alias, &pass, &phrase) {
+                Ok(msg) => println!("{}", msg),
+                Err(msg) => cli::error(&msg),
+            };
+        }
+    }
+}
+
 fn local_get(args: &[String]) {
     if args.len() < 3 {
         usage_local("get");
         return;
     }
+
     let vault: &str = &args[1];
     let id: &str = &args[2];
     let pass = cli::password("Please enter your password (hidden):");
@@ -139,6 +161,7 @@ fn run_local(args: &[String]) {
     match args[1].as_ref() {
         "new" => local_new(&args[1..]),
         "get" => local_get(&args[1..]),
+        "add" => local_add(&args[1..]),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }
 }

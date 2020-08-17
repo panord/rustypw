@@ -67,6 +67,13 @@ impl UnlockedVault {
             enc: ciphertext,
         }
     }
+
+    pub fn add(&mut self, id: String, password: String) {
+        self.pws.push(PwEntry {
+            id: id,
+            password: password,
+        });
+    }
 }
 
 pub fn get_pw(name: &str, id: &str, pass: &str) -> Result<String, String> {
@@ -121,6 +128,21 @@ pub fn new(name: &str, pass: &str, vfied: &str) -> Result<(), String> {
         ),
         Err(_) => Err(format!("Failed creating new vault {}", name)),
     }
+}
+
+pub fn add(vault: &str, alias: &str, pass: &str, new_pass: &str) -> Result<String, String> {
+    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
+    std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
+    let path = rpw_d.join(format!("{}{}", vault, VAULT_EXT));
+
+    let vault: LockedVault = read(&path).unwrap();
+    let salt = &vault.salt;
+    let key = crypto::key(pass.as_bytes(), &salt).unwrap();
+    let mut unlocked = vault.unlock(&key);
+    unlocked.add(alias.to_string(), new_pass.to_string());
+    write(&path, &unlocked.lock(&key)).unwrap();
+
+    Ok(format!("Entered {}", alias))
 }
 
 fn read(fname: &Path) -> Result<LockedVault, String> {
