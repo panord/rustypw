@@ -88,7 +88,6 @@ pub fn get_pw(name: &str, id: &str, pass: &str) -> Result<String, String> {
             let uv: UnlockedVault = lv.unlock(&key);
             for pw in uv.pws {
                 if pw.id == id {
-                    println!("{}", pw.password);
                     return Ok(pw.password);
                 }
             }

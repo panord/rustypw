@@ -3,6 +3,7 @@ mod cli;
 mod store;
 
 use std::env;
+use std::process::Command;
 use std::result::Result;
 use std::string::String;
 
@@ -10,7 +11,8 @@ fn usage(key: &str) {
     match key {
         "new" => print!("new <vault_name>"),
         "get" => print!("get <vault_name> <id>"),
-        "add" => print!("add <alias> <length>"),
+        "add" => print!("add <vault_name> <alias> <length>"),
+        "clear" => print!("clear <seconds>"),
         "delete" => print!("delete <vault_name>"),
         _ => print!("new|get|add"),
     }
@@ -34,6 +36,36 @@ fn new(args: &[String]) {
     }
 }
 
+pub fn password(len: u8) -> Result<String, String> {
+    let out = Command::new("pwgen")
+        .arg("-N")
+        .arg("1")
+        .arg(len.to_string())
+        .output()
+        .expect("Failed getting pw");
+
+    match out.status.code().unwrap() {
+        0 => Ok(std::str::from_utf8(&out.stdout).unwrap().to_string()),
+        _ => Err(std::str::from_utf8(&out.stderr).unwrap().to_string()),
+    }
+}
+
+fn add(args: &[String]) {
+    if args.len() < 3 {
+        usage("add");
+        return;
+    }
+
+    let vault: &str = &args[1];
+    let alias: &str = &args[2];
+    let mpass = cli::password("Please enter your password (hidden):");
+    let pw: String = password(15).expect("Failed generating password");
+    match store::local::add(vault, alias, &mpass, &pw) {
+        Ok(msg) => println!("{}", msg),
+        Err(msg) => cli::error(&msg),
+    };
+}
+
 fn delete(args: &[String]) {
     if args.len() < 2 {
         usage("delete");
@@ -55,11 +87,26 @@ fn get(args: &[String]) {
     let vault: &str = &args[1];
     let id: &str = &args[2];
     let pass = cli::password("Please enter your password (hidden):");
+    let clear_in = 5;
 
     match store::local::get_pw(vault, id, &pass) {
-        Ok(pw) => cli::xclip::to_clipboard(&pw),
+        Ok(pw) => {
+            cli::xclip::to_clipboard(&pw);
+            println!("Clearing clipboard in {} seconds", clear_in);
+            cli::xclip::clear(clear_in);
+        }
         Err(msg) => cli::error(&msg),
     };
+}
+
+fn clear(args: &[String]) {
+    if args.len() < 2 {
+        usage("clear");
+        return;
+    }
+    let dur = std::time::Duration::from_secs(args[1].parse().unwrap());
+    std::thread::sleep(dur);
+    cli::xclip::to_clipboard("cleared");
 }
 
 fn run_command(args: &[String]) {
@@ -70,7 +117,9 @@ fn run_command(args: &[String]) {
 
     match args[1].as_ref() {
         "new" => new(&args[1..]),
+        "add" => add(&args[1..]),
         "get" => get(&args[1..]),
+        "clear" => clear(&args[1..]),
         "delete" => delete(&args[1..]),
         _ => println!("Unknown command or context {} not implemented", args[1]),
     }

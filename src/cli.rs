@@ -45,4 +45,12 @@ pub mod xclip {
             .write_all(s.as_bytes())
             .expect("Failed to open stdin");
     }
+
+    pub fn clear(sleep: u64) {
+        Command::new("rpw")
+            .arg("clear")
+            .arg(sleep.to_string())
+            .spawn()
+            .expect("Failed getting pw");
+    }
 }
