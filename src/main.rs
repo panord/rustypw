@@ -14,7 +14,7 @@ fn usage(key: &str) {
         "add" => print!("add <vault_name> <alias> <length>"),
         "clear" => print!("clear <seconds>"),
         "delete" => print!("delete <vault_name>"),
-        _ => print!("new|get|add"),
+        _ => print!("new|get|add|clear|delete"),
     }
     println!("");
 }
