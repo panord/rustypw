@@ -89,7 +89,12 @@ fn get(args: &[String]) {
     let pass = cli::password("Please enter your password (hidden):");
     let clear_in = 5;
 
-    match store::local::get_pw(vault, id, &pass) {
+    let uv = store::local::open(vault, &pass);
+    if uv.is_err() {
+        cli::error("Could not find vault");
+        return;
+    }
+    match uv.unwrap().get(id.to_string()) {
         Ok(pw) => {
             cli::xclip::to_clipboard(&pw);
             println!("Clearing clipboard in {} seconds", clear_in);

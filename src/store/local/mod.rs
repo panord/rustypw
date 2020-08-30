@@ -75,9 +75,18 @@ impl UnlockedVault {
             password: password,
         });
     }
+
+    pub fn get(&self, id: String) -> Result<&str, String> {
+        for pw in &self.pws {
+            if pw.id == id {
+                return Ok(&pw.password);
+            }
+        }
+        return Err(format!("Failed to find password {}", id));
+    }
 }
 
-pub fn get_pw(name: &str, id: &str, pass: &str) -> Result<String, String> {
+pub fn open(name: &str, pass: &str) -> Result<UnlockedVault, String> {
     let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
     std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
     let path = rpw_d.join(format!("{}{}", name, VAULT_EXT));
@@ -86,15 +95,10 @@ pub fn get_pw(name: &str, id: &str, pass: &str) -> Result<String, String> {
     match crypto::key(pass.as_bytes(), &lv.salt) {
         Ok(key) => {
             let uv: UnlockedVault = lv.unlock(&key);
-            for pw in uv.pws {
-                if pw.id == id {
-                    return Ok(pw.password);
-                }
-            }
+            return Ok(uv);
         }
         Err(_) => return Err("Failed to derive key".to_string()),
-    };
-    return Err("Could not find password".to_string());
+    }
 }
 
 pub fn new(name: &str, pass: &str, vfied: &str) -> Result<(), String> {
