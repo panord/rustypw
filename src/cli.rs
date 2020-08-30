@@ -7,6 +7,21 @@ pub fn error(msg: &str) {
     println!("Error: {}", msg);
 }
 
+pub fn prompt(pr: &str) {
+    stdout()
+        .write_all(format!("rpw/{}# ", pr).as_bytes())
+        .expect("Failed writing to stdout");
+    stdout().flush().expect("Failed to flush stdout");
+}
+
+pub fn wait_command() -> Vec<String> {
+    let mut cmd = String::new();
+    stdin()
+        .read_line(&mut cmd)
+        .expect("Failed reading from stdin");
+    cmd.split_whitespace().map(String::from).collect()
+}
+
 pub fn yesorno(msg: &str) -> bool {
     let mut ans = String::new();
     stdout()

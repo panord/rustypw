@@ -9,14 +9,35 @@ use std::string::String;
 
 fn usage(key: &str) {
     match key {
+        "open" => print!("open <vault_name>"),
         "new" => print!("new <vault_name>"),
         "get" => print!("get <vault_name> <id>"),
         "add" => print!("add <vault_name> <alias> <length>"),
         "clear" => print!("clear <seconds>"),
         "delete" => print!("delete <vault_name>"),
-        _ => print!("new|get|add|clear|delete"),
+        _ => print!("open|new|get|add|clear|delete"),
     }
     println!("");
+}
+
+fn open(args: &[String]) {
+    if args.len() < 2 {
+        usage("open");
+        return;
+    }
+    let pass = cli::password("Please choose your password (hidden):");
+    let name: &str = &args[1];
+
+    match store::local::open(&name, &pass) {
+        Ok(_) => println!("{}", format!("Vault {} opened", name)),
+        Err(msg) => cli::error(&msg),
+    }
+
+    loop {
+        cli::prompt(&format!("{}", name));
+        let args = cli::wait_command();
+        run_command(&args);
+    }
 }
 
 fn new(args: &[String]) {
@@ -121,6 +142,7 @@ fn run_command(args: &[String]) {
     }
 
     match args[1].as_ref() {
+        "open" => open(&args[1..]),
         "new" => new(&args[1..]),
         "add" => add(&args[1..]),
         "get" => get(&args[1..]),
