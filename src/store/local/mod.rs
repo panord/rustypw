@@ -1,9 +1,9 @@
 mod crypto;
 mod vault;
-
 use crate::cli;
 use openssl::symm::{decrypt, encrypt, Cipher};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -12,15 +12,7 @@ use std::string::String;
 const SALT_LEN: usize = 256;
 const IV_LEN: usize = 16;
 const VAULT_EXT: &'static str = ".vlt";
-const VAULT_ID: &'static str = "vault-token";
-const VAULT_TOKEN: &'static str = "all-is-well";
 const RPW_DIR: &'static str = ".rpw.d";
-
-#[derive(Serialize, Deserialize)]
-pub struct PwEntry {
-    pub id: String,
-    pub password: String,
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct LockedVault {
@@ -33,7 +25,7 @@ pub struct LockedVault {
 pub struct UnlockedVault {
     pub name: String,
     pub salt: Vec<u8>,
-    pub pws: Vec<PwEntry>,
+    pub pws: HashMap<String, String>,
 }
 
 impl LockedVault {
@@ -42,7 +34,7 @@ impl LockedVault {
         let data = &self.enc;
         let iv = &self.iv;
         let json = String::from_utf8(decrypt(cipher, key, Some(&iv), data).unwrap()).unwrap();
-        let passwords: Vec<PwEntry> = serde_json::from_str(&json).unwrap();
+        let passwords: HashMap<String, String> = serde_json::from_str(&json).unwrap();
 
         UnlockedVault {
             name: self.name.clone(),
@@ -69,20 +61,15 @@ impl UnlockedVault {
         }
     }
 
-    pub fn add(&mut self, id: String, password: String) {
-        self.pws.push(PwEntry {
-            id: id,
-            password: password,
-        });
+    pub fn insert(&mut self, id: String, password: String) {
+        self.pws.insert(id, password);
     }
 
     pub fn get(&self, id: String) -> Result<&str, String> {
-        for pw in &self.pws {
-            if pw.id == id {
-                return Ok(&pw.password);
-            }
+        match &self.pws.get(&id) {
+            Some(pw) => Ok(pw),
+            None => Err(format!("Failed to find password {}", id)),
         }
-        return Err(format!("Failed to find password {}", id));
     }
 }
 
@@ -123,10 +110,7 @@ pub fn new(name: &str, pass: &str, vfied: &str) -> Result<(), String> {
             &UnlockedVault {
                 name: name.to_string(),
                 salt: salt.to_vec(),
-                pws: vec![PwEntry {
-                    id: VAULT_ID.to_string(),
-                    password: VAULT_TOKEN.to_string(),
-                }],
+                pws: HashMap::new(),
             }
             .lock(&key),
         ),
@@ -153,7 +137,7 @@ pub fn add(vault: &str, alias: &str, pass: &str, new_pass: &str) -> Result<Strin
     let salt = &vault.salt;
     let key = crypto::key(pass.as_bytes(), &salt).unwrap();
     let mut unlocked = vault.unlock(&key);
-    unlocked.add(alias.to_string(), new_pass.to_string());
+    unlocked.insert(alias.to_string(), new_pass.to_string());
     write(&path, &unlocked.lock(&key)).unwrap();
 
     Ok(format!("Entered {}", alias))
