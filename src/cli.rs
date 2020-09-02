@@ -46,6 +46,21 @@ pub mod xclip {
     use std::io::prelude::*;
     use std::process::Command;
 
+    #[cfg(target_os = "macos")]
+    pub fn to_clipboard(s: &str) {
+        let mut clip = Command::new("pbcopy")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .expect("Failed getting pw");
+
+        clip.stdin
+            .as_mut()
+            .unwrap()
+            .write_all(s.as_bytes())
+            .expect("Failed to open stdin");
+    }
+
+    #[cfg(target_os = "linux")]
     pub fn to_clipboard(s: &str) {
         let mut clip = Command::new("xclip")
             .stdin(std::process::Stdio::piped())
