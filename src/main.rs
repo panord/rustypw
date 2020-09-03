@@ -12,7 +12,7 @@ fn usage(key: &str) {
         "open" => print!("open <vault_name>"),
         "new" => print!("new <vault_name>"),
         "get" => print!("get <vault_name> <id>"),
-        "add" => print!("add <vault_name> <alias> <length>"),
+        "add" => print!("add <vault_name> <alias> <password>"),
         "clear" => print!("clear <seconds>"),
         "delete" => print!("delete <vault_name>"),
         _ => print!("open|new|get|add|clear|delete"),
@@ -79,11 +79,16 @@ fn add(args: &[String]) {
 
     let vault: &str = &args[1];
     let alias: &str = &args[2];
+    let pw: String = if args.len() == 4 {
+        args[3].to_string()
+    } else {
+        password(15)
+            .expect("Failed generating password")
+            .trim_end()
+            .to_string()
+    };
+
     let mpass = cli::password("Please enter your password (hidden):");
-    let pw: String = password(15)
-        .expect("Failed generating password")
-        .trim_end()
-        .to_string();
     match store::local::add(vault, alias, &mpass, &pw) {
         Ok(msg) => println!("{}", msg),
         Err(msg) => cli::error(&msg),
