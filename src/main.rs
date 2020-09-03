@@ -3,7 +3,6 @@ mod cli;
 mod store;
 
 use std::env;
-use std::process::Command;
 use std::result::Result;
 use std::string::String;
 
@@ -57,36 +56,15 @@ fn new(args: &[String]) {
     }
 }
 
-pub fn password(len: u8) -> Result<String, String> {
-    let out = Command::new("pwgen")
-        .arg("-N")
-        .arg("1")
-        .arg(len.to_string())
-        .output()
-        .expect("Failed getting pw");
-
-    match out.status.code().unwrap() {
-        0 => Ok(std::str::from_utf8(&out.stdout).unwrap().to_string()),
-        _ => Err(std::str::from_utf8(&out.stderr).unwrap().to_string()),
-    }
-}
-
 fn add(args: &[String]) {
-    if args.len() < 3 {
+    if args.len() < 4 {
         usage("add");
         return;
     }
 
     let vault: &str = &args[1];
     let alias: &str = &args[2];
-    let pw: String = if args.len() == 4 {
-        args[3].to_string()
-    } else {
-        password(15)
-            .expect("Failed generating password")
-            .trim_end()
-            .to_string()
-    };
+    let pw: String = args[3].to_string();
 
     let mpass = cli::password("Please enter your password (hidden):");
     match store::local::add(vault, alias, &mpass, &pw) {
