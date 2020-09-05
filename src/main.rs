@@ -33,9 +33,18 @@ fn open(args: &[String]) {
     }
 
     loop {
-        cli::prompt(&format!("{}", name));
+        cli::prompt(&format!("{}", &name));
         let args = cli::wait_command();
-        run_command(&args);
+        if args.len() < 2 {
+            continue;
+        }
+        run_command(
+            &[
+                vec!["rpw".to_string(), args[0].clone(), name.to_string()],
+                args[1..].to_vec(),
+            ]
+            .concat(),
+        );
     }
 }
 
