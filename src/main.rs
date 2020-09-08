@@ -11,7 +11,7 @@ fn usage(key: &str) {
         "open" => print!("open <vault_name>"),
         "new" => print!("new <vault_name>"),
         "get" => print!("get <vault_name> <id>"),
-        "add" => print!("add <vault_name> <alias> <password>"),
+        "add" => print!("add <vault_name> <alias>"),
         "clear" => print!("clear <seconds>"),
         "delete" => print!("delete <vault_name>"),
         _ => print!("open|new|get|add|clear|delete"),
@@ -66,15 +66,14 @@ fn new(args: &[String]) {
 }
 
 fn add(args: &[String]) {
-    if args.len() < 4 {
+    if args.len() < 3 {
         usage("add");
         return;
     }
 
     let vault: &str = &args[1];
     let alias: &str = &args[2];
-    let pw: String = args[3].to_string();
-
+    let pw: String = cli::password("Please enter your new password (hidden):");
     let mpass = cli::password("Please enter your password (hidden):");
     match store::local::add(vault, alias, &mpass, &pw) {
         Ok(msg) => println!("{}", msg),
