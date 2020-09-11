@@ -4,14 +4,15 @@ mod command;
 mod store;
 
 use command::Command;
+use std::collections::HashMap;
 use std::env;
 use std::result::Result;
 use std::string::String;
 use store::local::UnlockedVault;
 
-fn open(args: &[String]) {
+fn open(args: HashMap<String, String>) {
     let mut command = Command::new("open");
-    let vres = command.require::<String>("vault", args);
+    let vres = command.require::<String>("vault", &args);
     if command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -32,13 +33,12 @@ fn open(args: &[String]) {
         if args.len() == 0 {
             continue;
         }
-        run_vault_command(uv, &[args[..].to_vec()].concat());
     }
 }
 
-fn new(args: &[String]) {
+fn new(args: HashMap<String, String>) {
     let mut command = Command::new("new");
-    let nres = command.require::<String>("vault", args);
+    let nres = command.require::<String>("vault", &args);
     if command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -54,10 +54,10 @@ fn new(args: &[String]) {
     }
 }
 
-fn add(args: &[String]) {
+fn add(args: HashMap<String, String>) {
     let mut command = Command::new("add");
-    let vres = command.require::<String>("vault", args);
-    let ares = command.require::<String>("alias", args);
+    let vres = command.require::<String>("vault", &args);
+    let ares = command.require::<String>("alias", &args);
     if command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -75,9 +75,9 @@ fn add(args: &[String]) {
     };
 }
 
-fn delete(args: &[String]) {
+fn delete(args: HashMap<String, String>) {
     let mut command = Command::new("delete");
-    let vres = command.require::<String>("vault", args);
+    let vres = command.require::<String>("vault", &args);
 
     if command.is_ok() {
         println!("{}", command.usage());
@@ -91,10 +91,10 @@ fn delete(args: &[String]) {
     }
 }
 
-fn get(args: &[String]) {
+fn get(args: HashMap<String, String>) {
     let mut command = Command::new("get");
-    let vres = command.require::<String>("vault", args);
-    let idres = command.require::<String>("pw", args);
+    let vres = command.require::<String>("vault", &args);
+    let idres = command.require::<String>("pw", &args);
     if command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -121,9 +121,9 @@ fn get(args: &[String]) {
     };
 }
 
-fn clear(args: &[String]) {
+fn clear(args: HashMap<String, String>) {
     let mut command = Command::new("get");
-    let secres = command.require::<u64>("sec", args);
+    let secres = command.require::<u64>("sec", &args);
     if command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -133,35 +133,26 @@ fn clear(args: &[String]) {
     cli::xclip::to_clipboard("cleared");
 }
 
-fn run_vault_command(uv: &mut UnlockedVault, args: &[String]) {
-    if args.len() < 1 {
-        return;
-    }
-    match args[0] {
-        _ => println!("Unknown command or context {} not implemented", args[1]),
-    }
-}
-
-fn run_command(args: &[String]) {
-    if args.len() < 2 {
-        println!("open|new|get|add|clear|delete");
-        return;
-    }
-
-    match args[1].as_ref() {
-        "open" => open(&args[1..]),
-        "new" => new(&args[1..]),
-        "add" => add(&args[1..]),
-        "get" => get(&args[1..]),
-        "clear" => clear(&args[1..]),
-        "delete" => delete(&args[1..]),
-        _ => println!("Unknown command or context {} not implemented", args[1]),
+fn run_command(args: HashMap<String, String>) {
+    match args.get("rpw") {
+        Some(command) => match command.as_ref() {
+            "open" => open(args),
+            "new" => new(args),
+            "add" => add(args),
+            "get" => get(args),
+            "clear" => clear(args),
+            "delete" => delete(args),
+            _ => println!("Unknown command or context {} not implemented", command),
+        },
+        None => {
+            println!("open|new|get|add|clear|delete");
+        }
     }
 }
 
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
 
-    run_command(&args);
+    run_command(command::arg_map(&args));
     Ok(())
 }
