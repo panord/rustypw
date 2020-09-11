@@ -79,6 +79,7 @@ pub mod xclip {
     pub fn clear(sleep: u64) {
         Command::new("rpw")
             .arg("clear")
+            .arg("sec")
             .arg(sleep.to_string())
             .spawn()
             .expect("Failed getting pw");
