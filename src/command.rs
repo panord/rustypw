@@ -22,8 +22,8 @@ pub fn arg_map(args: &[String]) -> HashMap<String, String> {
 
 #[derive(Debug)]
 pub struct ArgParseError {
-    arg: String,
-    value: String,
+    pub arg: String,
+    pub value: String,
 }
 
 impl Error for ArgParseError {}
@@ -49,6 +49,7 @@ impl Command {
             ok: true,
         };
     }
+
     fn do_require<T: FromStr>(
         &mut self,
         key: &str,

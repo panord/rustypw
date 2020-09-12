@@ -1,12 +1,15 @@
 mod crypto;
 use crate::cli;
+use crate::command;
 use crate::files;
+use command::ArgParseError;
 use openssl::symm::{decrypt, encrypt, Cipher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use std::str::FromStr;
 use std::string::String;
 
 const SALT_LEN: usize = 256;
@@ -45,6 +48,21 @@ impl LockedVault {
     }
 }
 
+impl FromStr for LockedVault {
+    type Err = ArgParseError;
+    fn from_str(s: &str) -> Result<Self, ArgParseError> {
+        let fname = files::rpwd_path(s);
+        match File::open(&fname) {
+            Ok(f) => Ok(serde_json::from_reader::<File, LockedVault>(f)
+                .expect("Failed deserializing database")),
+            Err(_) => Err(ArgParseError {
+                arg: s.to_string(),
+                value: fname.display().to_string(),
+            }),
+        }
+    }
+}
+
 impl UnlockedVault {
     pub fn lock(&self, pass: &str) -> LockedVault {
         let cipher = Cipher::aes_256_cbc();
@@ -74,13 +92,6 @@ impl UnlockedVault {
             None => Err(format!("Failed to find password {}", id)),
         }
     }
-}
-
-pub fn open(vault: &str, pass: &str) -> Result<UnlockedVault, String> {
-    let path = files::rpwd_path(vault);
-    let lv: LockedVault = read(&path).expect("Could not find vault");
-    let uv: UnlockedVault = lv.unlock(pass);
-    Ok(uv)
 }
 
 pub fn new(vault: &str, pass: &str, vfied: &str) -> Result<(), String> {

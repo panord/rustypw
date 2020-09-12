@@ -9,27 +9,21 @@ use std::collections::HashMap;
 use std::env;
 use std::result::Result;
 use std::string::String;
+use store::LockedVault;
 use store::UnlockedVault;
 
 fn open(args: HashMap<String, String>) {
     let mut command = Command::new("open");
-    let vres = command.require::<String>("vault", &args);
+    let lvres = command.require::<LockedVault>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let vault = vres.unwrap();
     let pass = cli::password("Please choose your password (hidden):");
-    let uvres = store::open(&vault, &pass);
-    if uvres.is_err() {
-        cli::error("Could not find vault");
-        return;
-    }
-
-    let uv: &mut UnlockedVault = &mut uvres.unwrap();
+    let uv: &mut UnlockedVault = &mut lvres.unwrap().unlock(&pass);
     loop {
-        cli::prompt(&format!("{}", &vault));
+        cli::prompt(&format!("{}", &uv.name));
         let args = cli::wait_command();
         if args.len() == 0 {
             continue;
@@ -101,24 +95,18 @@ fn delete(args: HashMap<String, String>) {
 
 fn get(args: HashMap<String, String>) {
     let mut command = Command::new("get");
-    let vres = command.require::<String>("vault", &args);
+    let vres = command.require::<LockedVault>("vault", &args);
     let idres = command.require::<String>("pw", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let vault = vres.unwrap();
     let sec = command.default::<u64>("sec", &args, 5);
     let id = idres.unwrap();
     let pass = cli::password("Please enter your password (hidden):");
-    let uv = store::open(&vault, &pass);
-    if uv.is_err() {
-        cli::error("Could not find vault");
-        return;
-    }
-
-    match uv.unwrap().get(id.to_string()) {
+    let uv = vres.unwrap().unlock(&pass);
+    match uv.get(id.to_string()) {
         Ok(pw) => {
             cli::xclip::to_clipboard(&pw);
             println!("Clearing clipboard in {} seconds", sec);
