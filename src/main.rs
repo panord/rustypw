@@ -159,6 +159,7 @@ fn run_command(args: HashMap<String, String>) {
 
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
+    std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
 
     run_command(command::arg_map(&args));
     Ok(())
