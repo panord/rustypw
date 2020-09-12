@@ -13,7 +13,7 @@ use store::local::UnlockedVault;
 fn open(args: HashMap<String, String>) {
     let mut command = Command::new("open");
     let vres = command.require::<String>("vault", &args);
-    if command.is_ok() {
+    if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
@@ -38,18 +38,25 @@ fn open(args: HashMap<String, String>) {
 
 fn new(args: HashMap<String, String>) {
     let mut command = Command::new("new");
-    let nres = command.require::<String>("vault", &args);
-    if command.is_ok() {
+    let rvault = command.require::<String>("vault", &args);
+    if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
+    let rpass =
+        command.hidden::<String>("--password", &args, "Please choose your password (hidden):");
+    let rvfied = command.hidden::<String>("--verify", &args, "Verify your password (hidden):");
 
-    let name = nres.unwrap();
-    let pass = cli::password("Please choose your password (hidden):");
-    let vfied = cli::password("Please verify your password (hidden):");
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+    let vault = rvault.unwrap();
+    let pass = rpass.unwrap();
+    let vfied = rvfied.unwrap();
 
-    match store::local::new(&name, &pass, &vfied) {
-        Ok(_) => println!("{}", format!("New vault {} created", name)),
+    match store::local::new(&vault, &pass, &vfied) {
+        Ok(_) => println!("{}", format!("New vault {} created", vault)),
         Err(msg) => cli::error(&msg),
     }
 }
@@ -58,7 +65,7 @@ fn add(args: HashMap<String, String>) {
     let mut command = Command::new("add");
     let vres = command.require::<String>("vault", &args);
     let ares = command.require::<String>("alias", &args);
-    if command.is_ok() {
+    if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
@@ -79,7 +86,7 @@ fn delete(args: HashMap<String, String>) {
     let mut command = Command::new("delete");
     let vres = command.require::<String>("vault", &args);
 
-    if command.is_ok() {
+    if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
@@ -95,12 +102,13 @@ fn get(args: HashMap<String, String>) {
     let mut command = Command::new("get");
     let vres = command.require::<String>("vault", &args);
     let idres = command.require::<String>("pw", &args);
-    if command.is_ok() {
+    if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
     let vault = vres.unwrap();
+    let sec = command.default::<u64>("sec", &args, 5);
     let id = idres.unwrap();
     let pass = cli::password("Please enter your password (hidden):");
     let uv = store::local::open(&vault, &pass);
@@ -109,13 +117,11 @@ fn get(args: HashMap<String, String>) {
         return;
     }
 
-    let clear_in = 5;
-
     match uv.unwrap().get(id.to_string()) {
         Ok(pw) => {
             cli::xclip::to_clipboard(&pw);
-            println!("Clearing clipboard in {} seconds", clear_in);
-            cli::xclip::clear(clear_in);
+            println!("Clearing clipboard in {} seconds", sec);
+            cli::xclip::clear(sec);
         }
         Err(msg) => cli::error(&msg),
     };
@@ -124,7 +130,7 @@ fn get(args: HashMap<String, String>) {
 fn clear(args: HashMap<String, String>) {
     let mut command = Command::new("get");
     let secres = command.require::<u64>("sec", &args);
-    if command.is_ok() {
+    if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
