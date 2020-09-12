@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::env;
 use std::result::Result;
 use std::string::String;
-use store::local::UnlockedVault;
+use store::UnlockedVault;
 
 fn open(args: HashMap<String, String>) {
     let mut command = Command::new("open");
@@ -21,7 +21,7 @@ fn open(args: HashMap<String, String>) {
 
     let vault = vres.unwrap();
     let pass = cli::password("Please choose your password (hidden):");
-    let uvres = store::local::open(&vault, &pass);
+    let uvres = store::open(&vault, &pass);
     if uvres.is_err() {
         cli::error("Could not find vault");
         return;
@@ -56,7 +56,7 @@ fn new(args: HashMap<String, String>) {
     let pass = rpass.unwrap();
     let vfied = rvfied.unwrap();
 
-    match store::local::new(&vault, &pass, &vfied) {
+    match store::new(&vault, &pass, &vfied) {
         Ok(_) => println!("{}", format!("New vault {} created", vault)),
         Err(msg) => cli::error(&msg),
     }
@@ -77,7 +77,7 @@ fn add(args: HashMap<String, String>) {
     let mpass = cli::password("Please enter your vault password (hidden):");
     let pw = cli::password("New password (hidden):");
 
-    match store::local::add(&vault, &alias, &mpass, &pw) {
+    match store::add(&vault, &alias, &mpass, &pw) {
         Ok(msg) => println!("{}", msg),
         Err(msg) => cli::error(&msg),
     };
@@ -93,7 +93,7 @@ fn delete(args: HashMap<String, String>) {
     }
 
     let vault = vres.unwrap();
-    match store::local::delete(&vault) {
+    match store::delete(&vault) {
         Ok(_) => println!("Deleted vault {}", vault),
         Err(msg) => cli::error(&msg),
     }
@@ -112,7 +112,7 @@ fn get(args: HashMap<String, String>) {
     let sec = command.default::<u64>("sec", &args, 5);
     let id = idres.unwrap();
     let pass = cli::password("Please enter your password (hidden):");
-    let uv = store::local::open(&vault, &pass);
+    let uv = store::open(&vault, &pass);
     if uv.is_err() {
         cli::error("Could not find vault");
         return;
