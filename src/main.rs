@@ -1,6 +1,7 @@
 extern crate rpassword;
 mod cli;
 mod command;
+mod files;
 mod store;
 
 use command::Command;

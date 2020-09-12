@@ -1,6 +1,6 @@
 mod crypto;
-mod vault;
 use crate::cli;
+use crate::files;
 use openssl::symm::{decrypt, encrypt, Cipher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,7 +12,6 @@ use std::string::String;
 const SALT_LEN: usize = 256;
 const IV_LEN: usize = 16;
 const VAULT_EXT: &'static str = ".vlt";
-const RPW_DIR: &'static str = ".rpw.d";
 
 #[derive(Serialize, Deserialize)]
 pub struct LockedVault {
@@ -77,54 +76,44 @@ impl UnlockedVault {
     }
 }
 
-pub fn open(name: &str, pass: &str) -> Result<UnlockedVault, String> {
-    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
-    std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
-    let path = rpw_d.join(format!("{}{}", name, VAULT_EXT));
+pub fn open(vault: &str, pass: &str) -> Result<UnlockedVault, String> {
+    let path = files::rpwd_path(vault);
     let lv: LockedVault = read(&path).expect("Could not find vault");
     let uv: UnlockedVault = lv.unlock(pass);
     Ok(uv)
 }
 
-pub fn new(name: &str, pass: &str, vfied: &str) -> Result<(), String> {
+pub fn new(vault: &str, pass: &str, vfied: &str) -> Result<(), String> {
     if pass != vfied {
         return Err("Passwords are not equal".to_string());
     }
-    let vname = format!("{}{}", name, VAULT_EXT);
-    // Should get this from user storage
     let mut salt = [0; SALT_LEN];
     crypto::salt(&mut salt);
-    if name != "test" && vault::exists(&vname) {
-        return Err(format!("Vault {} already exists.", vname));
+    if files::exists(&vault) {
+        return Err(format!("Vault {} already exists.", vault));
     }
 
-    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
-    std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
-    let path = rpw_d.join(format!("{}{}", name, VAULT_EXT));
-
+    let path = files::rpwd_path(vault);
     let lv = UnlockedVault {
-        name: name.to_string(),
+        name: vault.to_string(),
         salt: salt.to_vec(),
         pws: HashMap::new(),
-    }.lock(&pass);
+    }
+    .lock(&pass);
     write(&path, &lv)
-
 }
 pub fn delete(name: &str) -> Result<(), String> {
     if cli::yesorno(format!("Would you really like to delete the vault {}?", name).as_str())
         && cli::yesorno("Are you reaaaaally sure? It's permanent.")
     {
-        vault::delete(format!("{}{}", name, VAULT_EXT).as_str())?;
+        files::delete(format!("{}{}", name, VAULT_EXT).as_str())?;
         return Ok(());
     }
     return Err("Did not delete vault".to_string());
 }
 
 pub fn add(vault: &str, alias: &str, pass: &str, new_pass: &str) -> Result<String, String> {
-    let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
-    std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
-    let path = rpw_d.join(format!("{}{}", vault, VAULT_EXT));
-
+    let path = files::rpwd_path(vault);
     let vault: LockedVault = read(&path).unwrap();
     let mut unlocked = vault.unlock(pass);
     unlocked.insert(alias.to_string(), new_pass.to_string());
