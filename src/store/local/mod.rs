@@ -29,11 +29,13 @@ pub struct UnlockedVault {
 }
 
 impl LockedVault {
-    pub fn unlock(&self, key: &[u8]) -> UnlockedVault {
+    pub fn unlock(&self, pass: &str) -> UnlockedVault {
+        let salt = &self.salt;
+        let key = crypto::key(&pass.as_bytes(), &salt).unwrap();
         let cipher = Cipher::aes_256_cbc();
         let data = &self.enc;
         let iv = &self.iv;
-        let json = String::from_utf8(decrypt(cipher, key, Some(&iv), data).unwrap()).unwrap();
+        let json = String::from_utf8(decrypt(cipher, &key, Some(&iv), data).unwrap()).unwrap();
         let passwords: HashMap<String, String> = serde_json::from_str(&json).unwrap();
 
         UnlockedVault {
@@ -45,14 +47,16 @@ impl LockedVault {
 }
 
 impl UnlockedVault {
-    pub fn lock(&self, key: &[u8]) -> LockedVault {
+    pub fn lock(&self, pass: &str) -> LockedVault {
         let cipher = Cipher::aes_256_cbc();
+        let salt = &self.salt;
+        let key = crypto::key(&pass.as_bytes(), &salt).unwrap();
         let data = serde_json::to_string_pretty(&self.pws).expect("Failed to serialize passwords");
         let key = key;
 
         let mut iv = [0; IV_LEN];
         crypto::rand_bytes(&mut iv);
-        let ciphertext = encrypt(cipher, key, Some(&iv), data.as_bytes()).unwrap();
+        let ciphertext = encrypt(cipher, &key, Some(&iv), data.as_bytes()).unwrap();
         LockedVault {
             name: self.name.clone(),
             iv: iv.to_vec(),
@@ -78,14 +82,8 @@ pub fn open(name: &str, pass: &str) -> Result<UnlockedVault, String> {
     std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
     let path = rpw_d.join(format!("{}{}", name, VAULT_EXT));
     let lv: LockedVault = read(&path).expect("Could not find vault");
-
-    match crypto::key(pass.as_bytes(), &lv.salt) {
-        Ok(key) => {
-            let uv: UnlockedVault = lv.unlock(&key);
-            return Ok(uv);
-        }
-        Err(_) => return Err("Failed to derive key".to_string()),
-    }
+    let uv: UnlockedVault = lv.unlock(pass);
+    Ok(uv)
 }
 
 pub fn new(name: &str, pass: &str, vfied: &str) -> Result<(), String> {
@@ -104,20 +102,14 @@ pub fn new(name: &str, pass: &str, vfied: &str) -> Result<(), String> {
     std::fs::create_dir_all(&rpw_d).expect("Failed to create rpw dir");
     let path = rpw_d.join(format!("{}{}", name, VAULT_EXT));
 
-    match crypto::key(pass.as_bytes(), &salt) {
-        Ok(key) => write(
-            &path,
-            &UnlockedVault {
-                name: name.to_string(),
-                salt: salt.to_vec(),
-                pws: HashMap::new(),
-            }
-            .lock(&key),
-        ),
-        Err(_) => Err(format!("Failed creating new vault {}", name)),
-    }
-}
+    let lv = UnlockedVault {
+        name: name.to_string(),
+        salt: salt.to_vec(),
+        pws: HashMap::new(),
+    }.lock(&pass);
+    write(&path, &lv)
 
+}
 pub fn delete(name: &str) -> Result<(), String> {
     if cli::yesorno(format!("Would you really like to delete the vault {}?", name).as_str())
         && cli::yesorno("Are you reaaaaally sure? It's permanent.")
@@ -134,11 +126,9 @@ pub fn add(vault: &str, alias: &str, pass: &str, new_pass: &str) -> Result<Strin
     let path = rpw_d.join(format!("{}{}", vault, VAULT_EXT));
 
     let vault: LockedVault = read(&path).unwrap();
-    let salt = &vault.salt;
-    let key = crypto::key(pass.as_bytes(), &salt).unwrap();
-    let mut unlocked = vault.unlock(&key);
+    let mut unlocked = vault.unlock(pass);
     unlocked.insert(alias.to_string(), new_pass.to_string());
-    write(&path, &unlocked.lock(&key)).unwrap();
+    write(&path, &unlocked.lock(&pass)).unwrap();
 
     Ok(format!("Entered {}", alias))
 }
