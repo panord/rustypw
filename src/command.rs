@@ -106,7 +106,7 @@ impl Command {
         args: &HashMap<String, String>,
         msg: &str,
     ) -> Result<T, ArgParseError> {
-        match self.require::<T>(key, args) {
+        match self.do_require::<T>(key, args) {
             Ok(arg) => Ok(arg),
             Err(_) => {
                 let pval = cli::password(&format!("{}", msg));
