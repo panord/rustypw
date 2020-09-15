@@ -10,24 +10,34 @@ use std::env;
 use std::result::Result;
 use std::string::String;
 use store::LockedVault;
-use store::UnlockedVault;
 
 fn open(args: HashMap<String, String>) {
     let mut command = Command::new("open");
-    let lvres = command.require::<LockedVault>("vault", &args);
+    let vname = command.require::<String>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
+    // Is it better to store this or to expose the full db? Probably neither.
+    // Perhaps we can store in intel enclave or something?
     let pass = cli::password("Please choose your password (hidden):");
-    let uv: &mut UnlockedVault = &mut lvres.unwrap().unlock(&pass);
+    let name = vname.unwrap();
     loop {
-        cli::prompt(&format!("{}", &uv.name));
+        cli::prompt(&format!("{}", name.clone()));
         let args = cli::wait_command();
         if args.len() == 0 {
             continue;
         }
+        // TODO: this is ok?
+        if args.len() == 1 {
+            continue;
+        }
+        let mut hargs = command::arg_map(&args[1..]);
+        hargs.insert("rpw".to_string(), args[0].clone());
+        hargs.insert("vault".to_string(), name.clone());
+        hargs.insert("--password".to_string(), pass.clone());
+        run_command(hargs);
     }
 }
 
