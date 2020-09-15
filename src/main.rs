@@ -21,7 +21,7 @@ fn open(args: HashMap<String, String>) {
 
     // Is it better to store this or to expose the full db? Probably neither.
     // Perhaps we can store in intel enclave or something?
-    let pass = cli::password("Please choose your password (hidden):");
+    let pass = cli::password("Please enter vault password (hidden):");
     let name = vname.unwrap();
     loop {
         cli::prompt(&format!("{}", name.clone()));
@@ -29,10 +29,7 @@ fn open(args: HashMap<String, String>) {
         if args.len() == 0 {
             continue;
         }
-        // TODO: this is ok?
-        if args.len() == 1 {
-            continue;
-        }
+
         let mut hargs = command::arg_map(&args[1..]);
         hargs.insert("rpw".to_string(), args[0].clone());
         hargs.insert("vault".to_string(), name.clone());
@@ -48,9 +45,12 @@ fn new(args: HashMap<String, String>) {
         println!("{}", command.usage());
         return;
     }
-    let rpass =
-        command.hidden::<String>("--password", &args, "Please choose your password (hidden):");
-    let rvfied = command.hidden::<String>("--verify", &args, "Verify your password (hidden):");
+    let rpass = command.hidden::<String>(
+        "--password",
+        &args,
+        "Please choose vault password (hidden):",
+    );
+    let rvfied = command.hidden::<String>("--verify", &args, "Verify vault password (hidden):");
 
     if !command.is_ok() {
         println!("{}", command.usage());
@@ -75,13 +75,19 @@ fn add(args: HashMap<String, String>) {
         return;
     }
 
+    let nres = command.hidden::<String>("--new-password", &args, "New password (hidden):");
+    let mres = command.hidden::<String>("--password", &args, "Enter vault password (hidden):");
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
     let vault = vres.unwrap();
     let alias = ares.unwrap();
+    let npass = nres.unwrap();
+    let mpass = mres.unwrap();
 
-    let mpass = cli::password("Please enter your vault password (hidden):");
-    let pw = cli::password("New password (hidden):");
-
-    match store::add(&vault, &alias, &mpass, &pw) {
+    match store::add(&vault, &alias, &mpass, &npass) {
         Ok(msg) => println!("{}", msg),
         Err(msg) => cli::error(&msg),
     };
@@ -90,7 +96,6 @@ fn add(args: HashMap<String, String>) {
 fn delete(args: HashMap<String, String>) {
     let mut command = Command::new("delete");
     let vres = command.require::<String>("vault", &args);
-
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -112,13 +117,20 @@ fn get(args: HashMap<String, String>) {
         return;
     }
 
+    let mres =
+        command.hidden::<String>("--password", &args, "Please enter vault password (hidden):");
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
     let sec = command.default::<u64>("sec", &args, 5);
     let id = idres.unwrap();
-    let pass = cli::password("Please enter your password (hidden):");
-    let uv = vres.unwrap().unlock(&pass);
+    let mpass = mres.unwrap();
+    let uv = vres.unwrap().unlock(&mpass);
     match uv.get(id.to_string()) {
-        Ok(pw) => {
-            cli::xclip::to_clipboard(&pw);
+        Ok(pass) => {
+            cli::xclip::to_clipboard(&pass);
             println!("Clearing clipboard in {} seconds", sec);
             cli::xclip::clear(sec);
         }
@@ -158,7 +170,6 @@ fn run_command(args: HashMap<String, String>) {
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
     std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
-
     run_command(command::arg_map(&args));
     Ok(())
 }
