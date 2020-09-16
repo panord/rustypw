@@ -5,6 +5,8 @@ mod files;
 mod store;
 
 use command::Command;
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
 use std::result::Result;
@@ -23,18 +25,34 @@ fn open(args: HashMap<String, String>) {
     // Perhaps we can store in intel enclave or something?
     let pass = cli::password("Please enter vault password (hidden):");
     let name = vname.unwrap();
+    let mut rl = Editor::<()>::new();
     loop {
-        cli::prompt(&format!("{}", name.clone()));
-        let args = cli::wait_command();
-        if args.len() == 0 {
-            continue;
+        let readline = rl.readline(&format!("{}{}", name, ">> "));
+        match readline {
+            Ok(line) => {
+                let args: Vec<String> = line.split_whitespace().map(String::from).collect();
+                let mut hargs = command::arg_map(&args);
+                if args.len() == 0 {
+                    continue;
+                }
+                hargs.insert("rpw".to_string(), args[0].clone());
+                hargs.insert("vault".to_string(), name.clone());
+                hargs.insert("--password".to_string(), pass.clone());
+                run_command(hargs);
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
         }
-
-        let mut hargs = command::arg_map(&args[1..]);
-        hargs.insert("rpw".to_string(), args[0].clone());
-        hargs.insert("vault".to_string(), name.clone());
-        hargs.insert("--password".to_string(), pass.clone());
-        run_command(hargs);
     }
 }
 
@@ -159,11 +177,10 @@ fn run_command(args: HashMap<String, String>) {
             "get" => get(args),
             "clear" => clear(args),
             "delete" => delete(args),
+            "help" => println!("open|new|get|add|clear|delete"),
             _ => println!("Unknown command or context {} not implemented", command),
         },
-        None => {
-            println!("open|new|get|add|clear|delete");
-        }
+        None => println!("Internal Error"),
     }
 }
 
