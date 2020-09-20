@@ -180,7 +180,7 @@ fn run_command(args: HashMap<String, String>) {
             "help" => println!("open|new|get|add|clear|delete"),
             _ => println!("Unknown command or context {} not implemented", command),
         },
-        None => println!("Internal Error"),
+        None => println!("open|new|get|add|clear|delete"),
     }
 }
 
