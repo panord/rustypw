@@ -126,6 +126,31 @@ fn delete(args: HashMap<String, String>) {
     }
 }
 
+fn list(args: HashMap<String, String>) {
+    let mut command = Command::new("get");
+    let vres = command.require::<LockedVault>("vault", &args);
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
+    let mres =
+        command.hidden::<String>("--password", &args, "Please enter vault password (hidden):");
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
+    let mpass = mres.unwrap();
+    let uv = vres.unwrap().unlock(&mpass);
+    let ids: Vec<&String> = uv.pws.iter().map(|p| p.0).collect();
+
+    println!("Stored passwords");
+    for id in ids {
+        println!("\t{}", id);
+    }
+}
+
 fn get(args: HashMap<String, String>) {
     let mut command = Command::new("get");
     let vres = command.require::<LockedVault>("vault", &args);
@@ -175,12 +200,13 @@ fn run_command(args: HashMap<String, String>) {
             "new" => new(args),
             "add" => add(args),
             "get" => get(args),
+            "list" => list(args),
             "clear" => clear(args),
             "delete" => delete(args),
-            "help" => println!("open|new|get|add|clear|delete"),
+            "help" => println!("open|list|new|get|add|clear|delete"),
             _ => println!("Unknown command or context {} not implemented", command),
         },
-        None => println!("open|new|get|add|clear|delete"),
+        None => println!("open|list|new|get|add|clear|delete"),
     }
 }
 
