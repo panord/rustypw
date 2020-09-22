@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::env;
 use std::result::Result;
 use std::string::String;
-use store::LockedVault;
+use store::{LockedVault, UnlockedVault};
 
 fn open(args: HashMap<String, String>) {
     let mut command = Command::new("open");
@@ -77,16 +77,28 @@ fn new(args: HashMap<String, String>) {
     let vault = rvault.unwrap();
     let pass = rpass.unwrap();
     let vfied = rvfied.unwrap();
-
-    match store::new(&vault, &pass, &vfied) {
-        Ok(_) => println!("{}", format!("New vault {} created", vault)),
-        Err(msg) => cli::error(&msg),
+    if pass != vfied {
+        println!("Passwords do not match");
+        return;
     }
+
+    if files::exists(&vault)
+        && !cli::yesorno(&format!(
+            "Vault '{}' already exists, would you like to overwrite it?",
+            vault
+        ))
+    {
+        return;
+    }
+
+    let uv = UnlockedVault::new(&vault);
+    uv.lock(&pass).save();
+    println!("{}", format!("New vault {} created", vault))
 }
 
 fn add(args: HashMap<String, String>) {
     let mut command = Command::new("add");
-    let vres = command.require::<String>("vault", &args);
+    let vres = command.require::<LockedVault>("vault", &args);
     let ares = command.require::<String>("alias", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
@@ -100,28 +112,25 @@ fn add(args: HashMap<String, String>) {
         return;
     }
 
-    let vault = vres.unwrap();
-    let alias = ares.unwrap();
     let npass = nres.unwrap();
     let mpass = mres.unwrap();
-
-    match store::add(&vault, &alias, &mpass, &npass) {
-        Ok(msg) => println!("{}", msg),
-        Err(msg) => cli::error(&msg),
-    };
+    let alias = ares.unwrap();
+    let mut uv = vres.unwrap().unlock(&mpass).unwrap();
+    uv.insert(alias, npass);
+    uv.lock(&mpass).save();
 }
 
 fn delete(args: HashMap<String, String>) {
     let mut command = Command::new("delete");
-    let vres = command.require::<String>("vault", &args);
+    let vres = command.require::<LockedVault>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
     let vault = vres.unwrap();
-    match store::delete(&vault) {
-        Ok(_) => println!("Deleted vault {}", vault),
+    match &vault.delete() {
+        Ok(_) => println!("Deleted vault {}", &vault.name),
         Err(msg) => cli::error(&msg),
     }
 }
@@ -142,7 +151,7 @@ fn list(args: HashMap<String, String>) {
     }
 
     let mpass = mres.unwrap();
-    let uv = vres.unwrap().unlock(&mpass);
+    let uv = vres.unwrap().unlock(&mpass).unwrap();
     let ids: Vec<&String> = uv.pws.iter().map(|p| p.0).collect();
 
     println!("Stored passwords");
@@ -170,7 +179,7 @@ fn get(args: HashMap<String, String>) {
     let sec = command.default::<u64>("sec", &args, 5);
     let id = idres.unwrap();
     let mpass = mres.unwrap();
-    let uv = vres.unwrap().unlock(&mpass);
+    let uv = vres.unwrap().unlock(&mpass).unwrap();
     match uv.get(id.to_string()) {
         Ok(pass) => {
             cli::xclip::to_clipboard(&pass);

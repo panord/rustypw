@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
 use std::str::FromStr;
 use std::string::String;
 
@@ -31,20 +30,48 @@ pub struct UnlockedVault {
 }
 
 impl LockedVault {
-    pub fn unlock(&self, pass: &str) -> UnlockedVault {
+    pub fn unlock(&self, pass: &str) -> Result<UnlockedVault, String> {
         let salt = &self.salt;
         let key = crypto::key(&pass.as_bytes(), &salt).unwrap();
         let cipher = Cipher::aes_256_cbc();
         let data = &self.enc;
         let iv = &self.iv;
-        let json = String::from_utf8(decrypt(cipher, &key, Some(&iv), data).unwrap()).unwrap();
+        let plain = decrypt(cipher, &key, Some(&iv), data);
+        if plain.is_err() {
+            return Err("Vault could not be decryted".to_string());
+        }
+        let json = String::from_utf8(plain.unwrap()).unwrap();
         let passwords: HashMap<String, String> = serde_json::from_str(&json).unwrap();
 
-        UnlockedVault {
+        Ok(UnlockedVault {
             name: self.name.clone(),
             salt: self.salt.to_vec(),
             pws: passwords,
+        })
+    }
+
+    pub fn save(&self) {
+        let path = files::rpwd_path(&self.name);
+        let json = serde_json::to_string(&self).expect("Failed to serialize passwords");
+
+        File::create(&path)
+            .and_then(|mut f| {
+                f.write_all(&json.as_bytes()).expect("Failed to write file");
+                Ok(())
+            })
+            .or_else(|_| Err(format!("Failed to create database {}", path.display())))
+            .expect("Failed to create vault file");
+    }
+
+    pub fn delete(&self) -> Result<(), String> {
+        if cli::yesorno(
+            format!("Would you really like to delete the vault {}?", &self.name).as_str(),
+        ) && cli::yesorno("Are you reaaaaally sure? It's permanent.")
+        {
+            files::delete(format!("{}{}", &self.name, VAULT_EXT).as_str())?;
+            return Ok(());
         }
+        return Err("Did not delete vault".to_string());
     }
 }
 
@@ -64,6 +91,17 @@ impl FromStr for LockedVault {
 }
 
 impl UnlockedVault {
+    pub fn new(vault: &str) -> UnlockedVault {
+        let mut salt = [0; SALT_LEN];
+        crypto::salt(&mut salt);
+
+        UnlockedVault {
+            name: vault.to_string(),
+            salt: salt.to_vec(),
+            pws: HashMap::new(),
+        }
+    }
+
     pub fn lock(&self, pass: &str) -> LockedVault {
         let cipher = Cipher::aes_256_cbc();
         let salt = &self.salt;
@@ -92,64 +130,4 @@ impl UnlockedVault {
             None => Err(format!("Failed to find password {}", id)),
         }
     }
-}
-
-pub fn new(vault: &str, pass: &str, vfied: &str) -> Result<(), String> {
-    if pass != vfied {
-        return Err("Passwords are not equal".to_string());
-    }
-    let mut salt = [0; SALT_LEN];
-    crypto::salt(&mut salt);
-    if files::exists(&vault) {
-        return Err(format!("Vault {} already exists.", vault));
-    }
-
-    let path = files::rpwd_path(vault);
-    let lv = UnlockedVault {
-        name: vault.to_string(),
-        salt: salt.to_vec(),
-        pws: HashMap::new(),
-    }
-    .lock(&pass);
-    write(&path, &lv)
-}
-pub fn delete(name: &str) -> Result<(), String> {
-    if cli::yesorno(format!("Would you really like to delete the vault {}?", name).as_str())
-        && cli::yesorno("Are you reaaaaally sure? It's permanent.")
-    {
-        files::delete(format!("{}{}", name, VAULT_EXT).as_str())?;
-        return Ok(());
-    }
-    return Err("Did not delete vault".to_string());
-}
-
-pub fn add(vault: &str, alias: &str, pass: &str, new_pass: &str) -> Result<String, String> {
-    let path = files::rpwd_path(vault);
-    let vault: LockedVault = read(&path).unwrap();
-    let mut unlocked = vault.unlock(pass);
-    unlocked.insert(alias.to_string(), new_pass.to_string());
-    write(&path, &unlocked.lock(&pass)).unwrap();
-
-    Ok(format!("Entered {}", alias))
-}
-
-fn read(fname: &Path) -> Result<LockedVault, String> {
-    match File::open(&fname) {
-        Ok(f) => {
-            Ok(serde_json::from_reader::<File, LockedVault>(f)
-                .expect("Failed deserializing database"))
-        }
-        Err(_) => Err(format!("Failed reading database {}", fname.display())),
-    }
-}
-
-fn write(fname: &Path, vault: &LockedVault) -> Result<(), String> {
-    let json = serde_json::to_string(&vault).expect("Failed to serialize passwords");
-
-    File::create(fname)
-        .and_then(|mut f| {
-            f.write_all(&json.as_bytes()).expect("Failed to write file");
-            Ok(())
-        })
-        .or_else(|_| Err(format!("Failed to create database {}", fname.display())))
 }
