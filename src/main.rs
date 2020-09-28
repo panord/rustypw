@@ -5,7 +5,6 @@ mod files;
 mod store;
 
 use command::Command;
-use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
@@ -28,30 +27,19 @@ fn open(args: HashMap<String, String>) {
     let mut rl = Editor::<()>::new();
     loop {
         let readline = rl.readline(&format!("{}{}", name, ">> "));
-        match readline {
-            Ok(line) => {
-                let args: Vec<String> = line.split_whitespace().map(String::from).collect();
-                let mut hargs = command::arg_map(&args);
-                if args.len() == 0 {
-                    continue;
-                }
-                hargs.insert("rpw".to_string(), args[0].clone());
-                hargs.insert("vault".to_string(), name.clone());
-                hargs.insert("--password".to_string(), pass.clone());
-                run_command(hargs);
+        if readline.is_ok() {
+            let line = readline.unwrap();
+            let args: Vec<String> = line.split_whitespace().map(String::from).collect();
+            let mut hargs = command::arg_map(&args);
+            if args.len() == 0 {
+                continue;
             }
-            Err(ReadlineError::Interrupted) => {
-                println!("CTRL-C");
-                break;
-            }
-            Err(ReadlineError::Eof) => {
-                println!("CTRL-D");
-                break;
-            }
-            Err(err) => {
-                println!("Error: {:?}", err);
-                break;
-            }
+            hargs.insert("rpw".to_string(), args[0].clone());
+            hargs.insert("vault".to_string(), name.clone());
+            hargs.insert("--password".to_string(), pass.clone());
+            run_command(hargs);
+        } else {
+            println!("{}", readline.unwrap_err());
         }
     }
 }
