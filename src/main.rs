@@ -25,7 +25,7 @@ impl ProgramState {
 
 fn open(args: HashMap<String, String>, state: &mut ProgramState) {
     let mut command = Command::new("open");
-    let vname = command.require::<String>("vault", &args);
+    let vault = command.require::<LockedVault>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -33,8 +33,15 @@ fn open(args: HashMap<String, String>, state: &mut ProgramState) {
 
     // Is it better to store this or to expose the full db? Probably neither.
     // Perhaps we can store in intel enclave or something?
+    let vault = vault.unwrap();
     let pass = cli::password("Please enter vault password (hidden):");
-    let name = vname.unwrap();
+    if vault.unlock(&pass).is_err() {
+        println!("You entered an incorrect password");
+        return;
+    }
+
+    let name = vault.name;
+
     let mut rl = Editor::<()>::new();
     loop {
         let readline = rl.readline(&format!("{}{}", name, ">> "));
