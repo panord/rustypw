@@ -29,6 +29,7 @@ pub fn password(msg: &str) -> String {
 
 pub mod xclip {
     use std::io::prelude::*;
+    use std::process::Child;
     use std::process::Command;
 
     #[cfg(target_os = "macos")]
@@ -61,12 +62,12 @@ pub mod xclip {
             .expect("Failed to open stdin");
     }
 
-    pub fn clear(sleep: u64) {
+    pub fn clear(sleep: u64) -> Child {
         Command::new("rpw")
             .arg("clear")
             .arg("sec")
             .arg(sleep.to_string())
             .spawn()
-            .expect("Failed getting pw");
+            .expect("Failed getting pw")
     }
 }

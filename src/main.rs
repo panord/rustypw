@@ -8,11 +8,22 @@ use command::Command;
 use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
+use std::process::Child;
 use std::result::Result;
 use std::string::String;
 use store::{LockedVault, UnlockedVault};
 
-fn open(args: HashMap<String, String>) {
+struct ProgramState {
+    cancelp: Option<Child>,
+}
+
+impl ProgramState {
+    fn new() -> Self {
+        ProgramState { cancelp: None }
+    }
+}
+
+fn open(args: HashMap<String, String>, state: &mut ProgramState) {
     let mut command = Command::new("open");
     let vname = command.require::<String>("vault", &args);
     if !command.is_ok() {
@@ -37,7 +48,7 @@ fn open(args: HashMap<String, String>) {
             hargs.insert("rpw".to_string(), args[0].clone());
             hargs.insert("vault".to_string(), name.clone());
             hargs.insert("--password".to_string(), pass.clone());
-            run_command(hargs);
+            run_command(hargs, state);
         } else {
             println!("{}", readline.unwrap_err());
         }
@@ -148,7 +159,7 @@ fn list(args: HashMap<String, String>) {
     }
 }
 
-fn get(args: HashMap<String, String>) {
+fn get(args: HashMap<String, String>, state: &mut ProgramState) {
     let mut command = Command::new("get");
     let vres = command.require::<LockedVault>("vault", &args);
     let idres = command.require::<String>("pw", &args);
@@ -172,7 +183,10 @@ fn get(args: HashMap<String, String>) {
         Ok(pass) => {
             cli::xclip::to_clipboard(&pass);
             println!("Clearing clipboard in {} seconds", sec);
-            cli::xclip::clear(sec);
+            if state.cancelp.is_some() {
+                state.cancelp.as_mut().unwrap().kill().expect("Failed to kill process");
+            }
+            state.cancelp = Some(cli::xclip::clear(sec));
         }
         Err(msg) => cli::error(&msg),
     };
@@ -190,13 +204,13 @@ fn clear(args: HashMap<String, String>) {
     cli::xclip::to_clipboard("cleared");
 }
 
-fn run_command(args: HashMap<String, String>) {
+fn run_command(args: HashMap<String, String>, state: &mut ProgramState) {
     match args.get("rpw") {
         Some(command) => match command.as_ref() {
-            "open" => open(args),
+            "open" => open(args, state),
             "new" => new(args),
             "add" => add(args),
-            "get" => get(args),
+            "get" => get(args, state),
             "list" => list(args),
             "clear" => clear(args),
             "delete" => delete(args),
@@ -209,7 +223,8 @@ fn run_command(args: HashMap<String, String>) {
 
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
+    let mut state = ProgramState::new();
     std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
-    run_command(command::arg_map(&args));
+    run_command(command::arg_map(&args), &mut state);
     Ok(())
 }
