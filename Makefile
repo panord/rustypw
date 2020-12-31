@@ -9,6 +9,6 @@ release:
 	cargo build --release
 
 install: release
-	ln -svf `realpath ./target/release/rpw` `realpath ~/bin`/rpw
+	ln -svf `realpath ./target/release/rpw` `realpath ~/bin`
 
 all: build
