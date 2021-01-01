@@ -3,6 +3,8 @@ use crate::cli;
 use crate::command;
 use crate::files;
 use command::ArgParseError;
+use openssl::base64::decode_block;
+use openssl::base64::encode_block;
 use openssl::symm::{decrypt, encrypt, Cipher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -18,9 +20,9 @@ const VAULT_EXT: &'static str = ".vlt";
 #[derive(Serialize, Deserialize)]
 pub struct LockedVault {
     pub name: String,
-    pub iv: Vec<u8>,
-    pub salt: Vec<u8>,
-    pub enc: Vec<u8>,
+    pub iv: String,
+    pub salt: String,
+    pub enc: String,
 }
 
 pub struct UnlockedVault {
@@ -31,12 +33,13 @@ pub struct UnlockedVault {
 
 impl LockedVault {
     pub fn unlock(&self, pass: &str) -> Result<UnlockedVault, String> {
-        let salt = &self.salt;
+        let salt = decode_block(&self.salt).expect("Failed to decode salt");
+        let data = decode_block(&self.enc).expect("Failed to decode data");
+        let iv = decode_block(&self.iv).expect("Failed to decode iv");
+
         let key = crypto::key(&pass.as_bytes(), &salt).unwrap();
         let cipher = Cipher::aes_256_cbc();
-        let data = &self.enc;
-        let iv = &self.iv;
-        let plain = decrypt(cipher, &key, Some(&iv), data);
+        let plain = decrypt(cipher, &key, Some(&iv), &data);
         if plain.is_err() {
             return Err("Vault could not be decryted".to_string());
         }
@@ -45,7 +48,7 @@ impl LockedVault {
 
         Ok(UnlockedVault {
             name: self.name.clone(),
-            salt: self.salt.to_vec(),
+            salt: salt,
             pws: passwords,
         })
     }
@@ -114,9 +117,9 @@ impl UnlockedVault {
         let ciphertext = encrypt(cipher, &key, Some(&iv), data.as_bytes()).unwrap();
         LockedVault {
             name: self.name.clone(),
-            iv: iv.to_vec(),
-            salt: self.salt.to_vec(),
-            enc: ciphertext,
+            iv: encode_block(&iv.to_vec()),
+            salt: encode_block(&self.salt.to_vec()),
+            enc: encode_block(&ciphertext),
         }
     }
 
