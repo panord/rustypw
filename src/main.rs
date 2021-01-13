@@ -8,6 +8,7 @@ use command::Command;
 use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
+use std::path::PathBuf;
 use std::process::Child;
 use std::result::Result;
 use std::string::String;
@@ -126,6 +127,66 @@ fn add(args: HashMap<String, String>) {
     uv.lock(&mpass).save();
 }
 
+fn export(args: HashMap<String, String>) {
+    let mut command = Command::new("export");
+    let vres = command.require::<LockedVault>("vault", &args);
+    let fres = command.require::<PathBuf>("file", &args);
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
+    let mres = command.hidden::<String>("--password", &args, "Enter vault password (hidden):");
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
+    let mpass = mres.unwrap();
+    let fpath = fres.unwrap();
+    let uv = vres.unwrap().unlock(&mpass).unwrap();
+    match &uv.export(&fpath) {
+        Ok(_) => println!("Exported vault {}", &fpath.display()),
+        Err(msg) => cli::error(&msg),
+    }
+}
+
+fn import(args: HashMap<String, String>) {
+    let mut command = Command::new("import");
+    let vres = command.require::<LockedVault>("vault", &args);
+    let fres = command.require::<PathBuf>("file", &args);
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
+    let mres = command.hidden::<String>("--password", &args, "Enter vault password (hidden):");
+    if !command.is_ok() {
+        println!("{}", command.usage());
+        return;
+    }
+
+    let mpass = mres.unwrap();
+    let fpath = fres.unwrap();
+    let mut uv = vres.unwrap().unlock(&mpass).unwrap();
+    let dupres = &uv.import(&fpath);
+    match dupres {
+        Ok(dup) => {
+            println!("Imported {} into vault", &fpath.display());
+            dup.iter().for_each(|p| {
+                if cli::yesorno(&format!(
+                    "Would you like to overwrite duplicate '{}'?",
+                    p.id
+                )) {
+                    uv.insert(p.id.clone(), p.pw.clone());
+                }
+            });
+            uv.lock(&mpass).save();
+        }
+        Err(msg) => cli::error(&msg),
+    };
+}
+
 fn delete(args: HashMap<String, String>) {
     let mut command = Command::new("delete");
     let vres = command.require::<LockedVault>("vault", &args);
@@ -216,15 +277,17 @@ fn run_command(args: HashMap<String, String>, state: &mut ProgramState) {
         Some(command) => match command.as_ref() {
             "open" => open(args, state),
             "new" => new(args),
+            "export" => export(args),
+            "import" => import(args),
             "add" => add(args),
             "get" => get(args, state),
             "list" => list(args),
             "clear" => clear(args),
             "delete" => delete(args),
-            "help" => println!("open|list|new|get|add|clear|delete"),
+            "help" => println!("open|list|new|get|export|import|add|clear|delete"),
             _ => println!("Unknown command or context {} not implemented", command),
         },
-        None => println!("open|list|new|get|add|clear|delete"),
+        None => println!("open|list|new|get|export|import|add|clear|delete"),
     }
 }
 

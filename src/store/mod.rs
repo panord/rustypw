@@ -10,12 +10,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::String;
 
 const SALT_LEN: usize = 256;
 const IV_LEN: usize = 16;
 const VAULT_EXT: &'static str = ".vlt";
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Password {
+    pub id: String,
+    pub pw: String,
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct LockedVault {
@@ -105,6 +112,42 @@ impl UnlockedVault {
         }
     }
 
+    pub fn import(&mut self, path: &PathBuf) -> Result<Vec<Password>, String> {
+        let pws: Vec<Password> = match File::open(&path) {
+            Ok(f) => Ok(serde_json::from_reader::<File, Vec<Password>>(f)
+                .expect("Failed deserializing database")),
+            Err(_) => Err(format!("Failed to import vault {}", path.display())),
+        }?;
+
+        let dup = pws
+            .iter()
+            .filter(|p| !self.try_insert(p.id.clone(), p.pw.clone()))
+            .map(|p| p.clone())
+            .collect();
+
+        Ok(dup)
+    }
+
+    pub fn export(&self, path: &PathBuf) -> Result<(), String> {
+        let pws: Vec<Password> = self
+            .pws
+            .iter()
+            .map(|(k, v)| Password {
+                id: k.to_string(),
+                pw: v.to_string(),
+            })
+            .collect();
+        let json = serde_json::to_string_pretty(&pws).expect("Failed to serialize vault");
+        File::create(&path)
+            .and_then(|mut f| {
+                f.write_all(&json.as_bytes()).expect("Failed to write file");
+                Ok(())
+            })
+            .or_else(|_| Err(format!("Failed to export vault {}", path.display())))
+            .expect("Failed to create vault file");
+        Ok(())
+    }
+
     pub fn lock(&self, pass: &str) -> LockedVault {
         let cipher = Cipher::aes_256_cbc();
         let salt = &self.salt;
@@ -121,6 +164,14 @@ impl UnlockedVault {
             salt: encode_block(&self.salt.to_vec()),
             enc: encode_block(&ciphertext),
         }
+    }
+
+    pub fn try_insert(&mut self, id: String, password: String) -> bool {
+        if !self.pws.contains_key(&id) {
+            self.pws.insert(id, password);
+            return true;
+        }
+        return false;
     }
 
     pub fn insert(&mut self, id: String, password: String) {
