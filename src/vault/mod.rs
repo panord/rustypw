@@ -18,7 +18,7 @@ const SALT_LEN: usize = 256;
 const IV_LEN: usize = 16;
 const VAULT_EXT: &'static str = ".vlt";
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Password {
     pub id: String,
     pub pw: String,

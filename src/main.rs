@@ -2,7 +2,7 @@ extern crate rpassword;
 mod cli;
 mod command;
 mod files;
-mod store;
+mod vault;
 
 use command::Command;
 use rustyline::Editor;
@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::process::Child;
 use std::result::Result;
 use std::string::String;
-use store::{LockedVault, UnlockedVault};
+use vault::{LockedVault, UnlockedVault};
 
 struct ProgramState {
     cancelp: Option<Child>,
