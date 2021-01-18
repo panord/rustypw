@@ -252,7 +252,12 @@ fn get(args: HashMap<String, String>, state: &mut ProgramState) {
             cli::xclip::to_clipboard(&pass);
             println!("Clearing clipboard in {} seconds", sec);
             if state.cancelp.is_some() {
-                state.cancelp.as_mut().unwrap().kill().expect("Failed to kill process");
+                state
+                    .cancelp
+                    .as_mut()
+                    .unwrap()
+                    .kill()
+                    .expect("Failed to kill process");
             }
             state.cancelp = Some(cli::xclip::clear(sec));
         }
