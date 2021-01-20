@@ -61,7 +61,7 @@ impl LockedVault {
     }
 
     pub fn save(&self) {
-        let path = files::rpwd_path(&self.name);
+        let path = files::rpwd_path(&format!("{}{}", self.name, VAULT_EXT));
         let json = serde_json::to_string(&self).expect("Failed to serialize passwords");
 
         File::create(&path)
@@ -88,7 +88,7 @@ impl LockedVault {
 impl FromStr for LockedVault {
     type Err = ArgParseError;
     fn from_str(s: &str) -> Result<Self, ArgParseError> {
-        let fname = files::rpwd_path(s);
+        let fname = files::rpwd_path(&format!("{}{}", s, VAULT_EXT));
         match File::open(&fname) {
             Ok(f) => Ok(serde_json::from_reader::<File, LockedVault>(f)
                 .expect("Failed deserializing database")),

@@ -1,5 +1,4 @@
 const RPW_DIR: &'static str = ".rpw.d";
-const VAULT_EXT: &'static str = ".vlt";
 use std::path::PathBuf;
 
 pub fn rpwd() -> PathBuf {
@@ -7,7 +6,7 @@ pub fn rpwd() -> PathBuf {
 }
 
 pub fn rpwd_path(name: &str) -> PathBuf {
-    rpwd().join(format!("{}{}", name.to_string(), VAULT_EXT))
+    rpwd().join(name.to_string())
 }
 
 pub fn exists(name: &str) -> bool {
