@@ -1,10 +1,12 @@
 extern crate rpassword;
 mod cli;
 mod command;
+mod config;
 mod files;
 mod vault;
 
 use command::Command;
+use config::Config;
 use rustyline::Editor;
 use std::collections::HashMap;
 use std::env;
@@ -24,7 +26,7 @@ impl ProgramState {
     }
 }
 
-fn open(args: HashMap<String, String>, state: &mut ProgramState) {
+fn open(args: HashMap<String, String>, state: &mut ProgramState, config: &Config) {
     let mut command = Command::new("open");
     let vault = command.require::<LockedVault>("vault", &args);
     if !command.is_ok() {
@@ -56,7 +58,7 @@ fn open(args: HashMap<String, String>, state: &mut ProgramState) {
             hargs.insert("rpw".to_string(), args[0].clone());
             hargs.insert("vault".to_string(), name.clone());
             hargs.insert("--password".to_string(), pass.clone());
-            run_command(hargs, state);
+            run_command(hargs, state, config);
         } else {
             println!("{}", readline.unwrap_err());
         }
@@ -227,7 +229,7 @@ fn list(args: HashMap<String, String>) {
     }
 }
 
-fn get(args: HashMap<String, String>, state: &mut ProgramState) {
+fn get(args: HashMap<String, String>, state: &mut ProgramState, config: &Config) {
     let mut command = Command::new("get");
     let vres = command.require::<LockedVault>("vault", &args);
     let idres = command.require::<String>("pw", &args);
@@ -243,7 +245,7 @@ fn get(args: HashMap<String, String>, state: &mut ProgramState) {
         return;
     }
 
-    let sec = command.default::<u64>("sec", &args, 5);
+    let sec = command.default::<u64>("sec", &args, config.clear_copy_timeout);
     let id = idres.unwrap();
     let mpass = mres.unwrap();
     let uv = vres.unwrap().unlock(&mpass).unwrap();
@@ -277,15 +279,15 @@ fn clear(args: HashMap<String, String>) {
     cli::xclip::to_clipboard("cleared");
 }
 
-fn run_command(args: HashMap<String, String>, state: &mut ProgramState) {
+fn run_command(args: HashMap<String, String>, state: &mut ProgramState, config: &Config) {
     match args.get("rpw") {
         Some(command) => match command.as_ref() {
-            "open" => open(args, state),
+            "open" => open(args, state, config),
             "new" => new(args),
             "export" => export(args),
             "import" => import(args),
             "add" => add(args),
-            "get" => get(args, state),
+            "get" => get(args, state, config),
             "list" => list(args),
             "clear" => clear(args),
             "delete" => delete(args),
@@ -299,7 +301,8 @@ fn run_command(args: HashMap<String, String>, state: &mut ProgramState) {
 fn main() -> Result<(), &'static str> {
     let args: Vec<String> = env::args().collect();
     let mut state = ProgramState::new();
+    let config: Result<Config, Config> = Config::load().or_else(|_| Ok(Config::new().save()));
     std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
-    run_command(command::arg_map(&args), &mut state);
+    run_command(command::arg_map(&args), &mut state, &config.unwrap());
     Ok(())
 }
