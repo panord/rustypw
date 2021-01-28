@@ -73,7 +73,7 @@ impl Command {
         }
     }
 
-    pub fn require<T: FromStr>(
+    pub fn required<T: FromStr>(
         &mut self,
         key: &str,
         args: &HashMap<String, String>,
@@ -89,19 +89,19 @@ impl Command {
         }
     }
 
-    pub fn default<T: FromStr>(
+    pub fn optional<T: FromStr>(
         &mut self,
         key: &str,
         args: &HashMap<String, String>,
         value: T,
     ) -> T {
-        match self.require(key, args) {
+        match self.required(key, args) {
             Ok(arg) => arg,
             Err(_) => value,
         }
     }
 
-    pub fn hidden<T: FromStr>(
+    pub fn prompt_hidden<T: FromStr>(
         &mut self,
         key: &str,
         args: &HashMap<String, String>,

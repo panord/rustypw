@@ -28,7 +28,7 @@ impl ProgramState {
 
 fn open(args: HashMap<String, String>, state: &mut ProgramState, config: &Config) {
     let mut command = Command::new("open");
-    let vault = command.require::<LockedVault>("vault", &args);
+    let vault = command.required::<LockedVault>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -37,7 +37,7 @@ fn open(args: HashMap<String, String>, state: &mut ProgramState, config: &Config
     // Is it better to store this or to expose the full db? Probably neither.
     // Perhaps we can store in intel enclave or something?
     let vault = vault.unwrap();
-    let pass = cli::password("Please enter vault password (hidden):");
+    let pass = cli::password("Please enter vault password (prompt_hidden):");
     if vault.unlock(&pass).is_err() {
         println!("You entered an incorrect password");
         return;
@@ -67,17 +67,21 @@ fn open(args: HashMap<String, String>, state: &mut ProgramState, config: &Config
 
 fn new(args: HashMap<String, String>) {
     let mut command = Command::new("new");
-    let rvault = command.require::<String>("vault", &args);
+    let rvault = command.required::<String>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
-    let rpass = command.hidden::<String>(
+    let rpass = command.prompt_hidden::<String>(
         "--password",
         &args,
-        "Please choose vault password (hidden):",
+        "Please choose vault password (prompt_hidden):",
     );
-    let rvfied = command.hidden::<String>("--verify", &args, "Verify vault password (hidden):");
+    let rvfied = command.prompt_hidden::<String>(
+        "--verify",
+        &args,
+        "Verify vault password (prompt_hidden):",
+    );
 
     if !command.is_ok() {
         println!("{}", command.usage());
@@ -107,15 +111,20 @@ fn new(args: HashMap<String, String>) {
 
 fn add(args: HashMap<String, String>) {
     let mut command = Command::new("add");
-    let vres = command.require::<LockedVault>("vault", &args);
-    let ares = command.require::<String>("alias", &args);
+    let vres = command.required::<LockedVault>("vault", &args);
+    let ares = command.required::<String>("alias", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let nres = command.hidden::<String>("--new-password", &args, "New password (hidden):");
-    let mres = command.hidden::<String>("--password", &args, "Enter vault password (hidden):");
+    let nres =
+        command.prompt_hidden::<String>("--new-password", &args, "New password (prompt_hidden):");
+    let mres = command.prompt_hidden::<String>(
+        "--password",
+        &args,
+        "Enter vault password (prompt_hidden):",
+    );
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -131,14 +140,18 @@ fn add(args: HashMap<String, String>) {
 
 fn export(args: HashMap<String, String>) {
     let mut command = Command::new("export");
-    let vres = command.require::<LockedVault>("vault", &args);
-    let fres = command.require::<PathBuf>("file", &args);
+    let vres = command.required::<LockedVault>("vault", &args);
+    let fres = command.required::<PathBuf>("file", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let mres = command.hidden::<String>("--password", &args, "Enter vault password (hidden):");
+    let mres = command.prompt_hidden::<String>(
+        "--password",
+        &args,
+        "Enter vault password (prompt_hidden):",
+    );
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -155,14 +168,18 @@ fn export(args: HashMap<String, String>) {
 
 fn import(args: HashMap<String, String>) {
     let mut command = Command::new("import");
-    let vres = command.require::<LockedVault>("vault", &args);
-    let fres = command.require::<PathBuf>("file", &args);
+    let vres = command.required::<LockedVault>("vault", &args);
+    let fres = command.required::<PathBuf>("file", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let mres = command.hidden::<String>("--password", &args, "Enter vault password (hidden):");
+    let mres = command.prompt_hidden::<String>(
+        "--password",
+        &args,
+        "Enter vault password (prompt_hidden):",
+    );
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -191,7 +208,7 @@ fn import(args: HashMap<String, String>) {
 
 fn delete(args: HashMap<String, String>) {
     let mut command = Command::new("delete");
-    let vres = command.require::<LockedVault>("vault", &args);
+    let vres = command.required::<LockedVault>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -206,14 +223,17 @@ fn delete(args: HashMap<String, String>) {
 
 fn list(args: HashMap<String, String>) {
     let mut command = Command::new("get");
-    let vres = command.require::<LockedVault>("vault", &args);
+    let vres = command.required::<LockedVault>("vault", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let mres =
-        command.hidden::<String>("--password", &args, "Please enter vault password (hidden):");
+    let mres = command.prompt_hidden::<String>(
+        "--password",
+        &args,
+        "Please enter vault password (prompt_hidden):",
+    );
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
@@ -231,21 +251,24 @@ fn list(args: HashMap<String, String>) {
 
 fn get(args: HashMap<String, String>, state: &mut ProgramState, config: &Config) {
     let mut command = Command::new("get");
-    let vres = command.require::<LockedVault>("vault", &args);
-    let idres = command.require::<String>("pw", &args);
+    let vres = command.required::<LockedVault>("vault", &args);
+    let idres = command.required::<String>("pw", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let mres =
-        command.hidden::<String>("--password", &args, "Please enter vault password (hidden):");
+    let mres = command.prompt_hidden::<String>(
+        "--password",
+        &args,
+        "Please enter vault password (prompt_hidden):",
+    );
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
     }
 
-    let sec = command.default::<u64>("sec", &args, config.clear_copy_timeout);
+    let sec = command.optional::<u64>("sec", &args, config.clear_copy_timeout);
     let id = idres.unwrap();
     let mpass = mres.unwrap();
     let uv = vres.unwrap().unlock(&mpass).unwrap();
@@ -269,7 +292,7 @@ fn get(args: HashMap<String, String>, state: &mut ProgramState, config: &Config)
 
 fn clear(args: HashMap<String, String>) {
     let mut command = Command::new("get");
-    let secres = command.require::<u64>("sec", &args);
+    let secres = command.required::<u64>("sec", &args);
     if !command.is_ok() {
         println!("{}", command.usage());
         return;
