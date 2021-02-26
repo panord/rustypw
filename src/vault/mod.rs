@@ -1,8 +1,6 @@
 mod crypto;
 use crate::cli;
-use crate::command;
 use crate::files;
-use command::ArgParseError;
 use openssl::base64::decode_block;
 use openssl::base64::encode_block;
 use openssl::symm::{decrypt, encrypt, Cipher};
@@ -60,6 +58,11 @@ impl LockedVault {
         })
     }
 
+    pub fn exists(&self) -> bool {
+        let path = files::rpwd_path(&format!("{}{}", self.name, VAULT_EXT));
+        path.exists()
+    }
+
     pub fn save(&self) {
         let path = files::rpwd_path(&format!("{}{}", self.name, VAULT_EXT));
         let json = serde_json::to_string(&self).expect("Failed to serialize passwords");
@@ -85,16 +88,20 @@ impl LockedVault {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct VaultError {
+    pub msg: String,
+}
+
 impl FromStr for LockedVault {
-    type Err = ArgParseError;
-    fn from_str(s: &str) -> Result<Self, ArgParseError> {
+    type Err = VaultError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let fname = files::rpwd_path(&format!("{}{}", s, VAULT_EXT));
         match File::open(&fname) {
             Ok(f) => Ok(serde_json::from_reader::<File, LockedVault>(f)
                 .expect("Failed deserializing database")),
-            Err(_) => Err(ArgParseError {
-                arg: s.to_string(),
-                value: fname.display().to_string(),
+            Err(_) => Err(VaultError {
+                msg: format!("Failed to open '{}'", &fname.display()),
             }),
         }
     }

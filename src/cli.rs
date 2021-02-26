@@ -1,3 +1,4 @@
+use clap::{App, Arg, SubCommand};
 use std::io::stdin;
 use std::io::stdout;
 use std::io::Write;
@@ -29,7 +30,6 @@ pub fn password(msg: &str) -> String {
 
 pub mod xclip {
     use std::io::prelude::*;
-    use std::process::Child;
     use std::process::Command;
 
     #[cfg(target_os = "macos")]
@@ -61,13 +61,157 @@ pub mod xclip {
             .write_all(s.as_bytes())
             .expect("Failed to open stdin");
     }
+}
 
-    pub fn clear(sleep: u64) -> Child {
-        Command::new("rpw")
-            .arg("clear")
-            .arg("sec")
-            .arg(sleep.to_string())
-            .spawn()
-            .expect("Failed getting pw")
-    }
+pub fn build() -> clap::App<'static, 'static> {
+    let mut app = App::new("rpw - the rusty password manager")
+        .version("2021")
+        .author("Patrik Lundgren <patrik.lundgren@outlook.com>")
+        .about(
+            "rpw is a small cli-only password manager for your terminal
+            copy pasting needs.",
+        );
+
+    app = app.subcommand(
+        SubCommand::with_name("open")
+            .about("Open a password encrypted vault.")
+            .arg(Arg::with_name("vault").required(true).takes_value(true)),
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("clear")
+            .about("Clear the clipboard register.")
+            .arg(Arg::with_name("sec").takes_value(true)),
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("get")
+            .about("Decrypt the vault and fetch a password to the clipboard.")
+            .arg(
+                Arg::with_name("vault")
+                    .long("vault")
+                    .short("v")
+                    .required(true)
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("password")
+                    .long("password")
+                    .short("p")
+                    .takes_value(true),
+            )
+            .arg(Arg::with_name("alias").required(true).takes_value(true)),
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("list")
+            .about("List the stored passwords of a vault by alias.")
+            .arg(
+                Arg::with_name("vault")
+                    .long("vault")
+                    .short("v")
+                    .required(true)
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("password")
+                    .long("password")
+                    .short("p")
+                    .takes_value(true),
+            ),
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("export")
+            .about("Export the vault to a plain-text json format.")
+            .arg(
+                Arg::with_name("vault")
+                    .long("vault")
+                    .short("v")
+                    .required(true)
+                    .takes_value(true),
+            )
+            .arg(Arg::with_name("file-path").required(true).takes_value(true))
+            .arg(
+                Arg::with_name("password")
+                    .long("password")
+                    .short("p")
+                    .takes_value(true),
+            ),
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("new")
+            .about("Create a new password encrypted vault.")
+            .arg(
+                Arg::with_name("vault")
+                    .long("vault")
+                    .short("v")
+                    .required(true)
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("password")
+                    .long("password")
+                    .short("p")
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("verify")
+                    .long("verify")
+                    .short("v")
+                    .takes_value(true),
+            ),
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("delete")
+            .about("Delete an existing vault.")
+            .arg(
+                Arg::with_name("vault")
+                    .long("vault")
+                    .short("v")
+                    .required(true)
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("password")
+                    .long("password")
+                    .short("p")
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("verify")
+                    .long("verify")
+                    .short("v")
+                    .takes_value(true),
+            ),
+    );
+
+    app = app.subcommand(
+        SubCommand::with_name("add")
+            .about("Add a password to the vault.")
+            .arg(
+                Arg::with_name("vault")
+                    .long("vault")
+                    .short("v")
+                    .required(true)
+                    .takes_value(true),
+            )
+            .arg(Arg::with_name("alias").required(true).takes_value(true))
+            .arg(
+                Arg::with_name("password")
+                    .long("password")
+                    .short("p")
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("new-password")
+                    .long("new-password")
+                    .short("n")
+                    .takes_value(true),
+            ),
+    );
+
+    app
 }
