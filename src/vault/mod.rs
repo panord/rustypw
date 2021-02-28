@@ -22,7 +22,7 @@ pub struct Password {
     pub pw: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LockedVault {
     pub name: String,
     pub iv: String,

@@ -81,19 +81,13 @@ pub fn build() -> clap::App<'static, 'static> {
     app = app.subcommand(
         SubCommand::with_name("clear")
             .about("Clear the clipboard register.")
-            .arg(Arg::with_name("sec").takes_value(true)),
+            .arg(Arg::with_name("sec").takes_value(true).required(true)),
     );
 
     app = app.subcommand(
         SubCommand::with_name("get")
             .about("Decrypt the vault and fetch a password to the clipboard.")
-            .arg(
-                Arg::with_name("vault")
-                    .long("vault")
-                    .short("v")
-                    .required(true)
-                    .takes_value(true),
-            )
+            .arg(Arg::with_name("vault").long("vault").short("v"))
             .arg(
                 Arg::with_name("password")
                     .long("password")
@@ -110,7 +104,6 @@ pub fn build() -> clap::App<'static, 'static> {
                 Arg::with_name("vault")
                     .long("vault")
                     .short("v")
-                    .required(true)
                     .takes_value(true),
             )
             .arg(
@@ -128,7 +121,6 @@ pub fn build() -> clap::App<'static, 'static> {
                 Arg::with_name("vault")
                     .long("vault")
                     .short("v")
-                    .required(true)
                     .takes_value(true),
             )
             .arg(Arg::with_name("file-path").required(true).takes_value(true))
@@ -195,7 +187,6 @@ pub fn build() -> clap::App<'static, 'static> {
                 Arg::with_name("vault")
                     .long("vault")
                     .short("v")
-                    .required(true)
                     .takes_value(true),
             )
             .arg(Arg::with_name("alias").required(true).takes_value(true))

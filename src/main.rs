@@ -15,22 +15,30 @@ use vault::{LockedVault, UnlockedVault};
 
 struct ProgramState {
     cancelp: Option<Child>,
+    locked_vault: Option<LockedVault>,
+    master_pw: Option<String>,
 }
 
 impl ProgramState {
     fn new() -> Self {
-        ProgramState { cancelp: None }
+        ProgramState {
+            cancelp: None,
+            locked_vault: None,
+            master_pw: None,
+        }
     }
 }
 
 fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) {
-    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
-    let pass = value_t!(args.value_of("password"), String)
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+    let lv = value_t!(args.value_of("vault"), LockedVault).unwrap();
+    let name = lv.name.clone();
+    state.locked_vault = Some(lv);
+    state.master_pw = Some(
+        value_t!(args.value_of("password"), String)
+            .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):")),
+    );
 
-    let name = vault.name;
     let app = cli::build();
-    let largs = vec!["--vault", &name, "--password", &pass];
     let mut rl = Editor::<()>::new();
     loop {
         let readline = rl.readline(&format!("{}{}", &name, ">> "));
@@ -41,7 +49,6 @@ fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) {
                 continue;
             }
             cmd.extend(line.split_whitespace());
-            cmd.extend(&largs);
 
             let matches = app.clone().get_matches_from_safe(cmd);
             match matches {
@@ -79,11 +86,19 @@ fn new(args: &ArgMatches) {
     println!("New vault {} created", vault);
 }
 
-fn add(args: &ArgMatches) {
-    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
-    let alias = value_t!(args.value_of("alias"), String).unwrap();
-    let mpass = value_t!(args.value_of("password"), String)
+fn add(args: &ArgMatches, state: &mut ProgramState) {
+    if state.locked_vault.is_none() {
+        state.locked_vault = Some(value_t!(args.value_of("vault"), LockedVault).unwrap());
+    }
+
+    let vault = state.locked_vault.as_ref().unwrap();
+    let mpass = state
+        .master_pw
+        .clone()
+        .ok_or_else(|| value_t!(args.value_of("password"), String))
         .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+
+    let alias = value_t!(args.value_of("alias"), String).unwrap();
     let npass = value_t!(args.value_of("new-password"), String)
         .unwrap_or_else(|_| cli::password("Please enter new password (prompt_hidden):"));
 
@@ -92,11 +107,18 @@ fn add(args: &ArgMatches) {
     uv.lock(&mpass).save();
 }
 
-fn export(args: &ArgMatches) {
-    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
+fn export(args: &ArgMatches, state: &mut ProgramState) {
     let fpath = value_t!(args.value_of("file-path"), PathBuf).unwrap();
-    let mpass = value_t!(args.value_of("password"), String)
+    if state.locked_vault.is_none() {
+        state.locked_vault = Some(value_t!(args.value_of("vault"), LockedVault).unwrap());
+    }
+    let vault = state.locked_vault.as_ref().unwrap();
+    let mpass = state
+        .master_pw
+        .clone()
+        .ok_or_else(|| value_t!(args.value_of("password"), String))
         .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+
     let uv = vault.unlock(&mpass).unwrap();
     match &uv.export(&fpath) {
         Ok(_) => println!("Exported vault {}", &fpath.display()),
@@ -108,22 +130,31 @@ fn dispatch(matches: &ArgMatches, state: &mut ProgramState, config: &Config) {
     match matches.subcommand() {
         ("open", Some(sargs)) => open(sargs, state, config),
         ("new", Some(sargs)) => new(sargs),
-        ("export", Some(args)) => export(args),
-        ("import", Some(args)) => import(args),
-        ("add", Some(sargs)) => add(sargs),
+        ("export", Some(args)) => export(args, state),
+        ("import", Some(args)) => import(args, state),
+        ("add", Some(sargs)) => add(sargs, state),
         ("get", Some(args)) => get(args, state, config),
-        ("list", Some(args)) => list(args),
+        ("list", Some(args)) => list(args, state),
         ("clear", Some(args)) => clear(args),
         ("delete", Some(args)) => delete(args),
         _ => {}
     }
 }
 
-fn import(args: &ArgMatches) {
-    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
+fn import(args: &ArgMatches, state: &mut ProgramState) {
     let fpath = value_t!(args.value_of("file"), PathBuf).unwrap();
-    let mpass = value_t!(args.value_of("password"), String)
+
+    if state.locked_vault.is_none() {
+        state.locked_vault = Some(value_t!(args.value_of("vault"), LockedVault).unwrap());
+    }
+    let vault = state.locked_vault.as_ref().unwrap();
+
+    let mpass = state
+        .master_pw
+        .clone()
+        .ok_or_else(|| value_t!(args.value_of("password"), String))
         .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+
     let mut uv = vault.unlock(&mpass).unwrap();
     let dupres = &uv.import(&fpath);
     match dupres {
@@ -161,10 +192,18 @@ fn delete(args: &ArgMatches) {
     }
 }
 
-fn list(args: &ArgMatches) {
-    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
-    let mpass = value_t!(args.value_of("password"), String)
+fn list(args: &ArgMatches, state: &mut ProgramState) {
+    if state.locked_vault.is_none() {
+        state.locked_vault = Some(value_t!(args.value_of("vault"), LockedVault).unwrap());
+    }
+
+    let vault = state.locked_vault.as_ref().unwrap();
+    let mpass = state
+        .master_pw
+        .clone()
+        .ok_or_else(|| value_t!(args.value_of("password"), String))
         .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+
     let uv = vault.unlock(&mpass).unwrap();
     let ids: Vec<&String> = uv.pws.iter().map(|p| p.0).collect();
 
@@ -175,9 +214,18 @@ fn list(args: &ArgMatches) {
 }
 
 fn get(args: &ArgMatches, state: &mut ProgramState, config: &Config) {
-    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
-    let mpass = value_t!(args.value_of("password"), String)
+    if state.locked_vault.is_none() {
+        state.locked_vault = Some(value_t!(args.value_of("vault"), LockedVault).unwrap());
+    }
+
+    let vault = state.locked_vault.as_ref().unwrap();
+
+    let mpass = state
+        .master_pw
+        .clone()
+        .ok_or_else(|| value_t!(args.value_of("password"), String))
         .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+
     let sec = value_t!(args.value_of("sec"), u64).unwrap_or_else(|_| config.clear_copy_timeout);
     let id = value_t!(args.value_of("alias"), String).unwrap();
     let uv = vault.unlock(&mpass).unwrap();
