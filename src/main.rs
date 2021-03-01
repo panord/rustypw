@@ -86,6 +86,24 @@ fn new(args: &ArgMatches) {
     println!("New vault {} created", vault);
 }
 
+fn delete(args: &ArgMatches) {
+    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
+    let pass = value_t!(args.value_of("password"), String)
+        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+    let vfied = value_t!(args.value_of("verify"), String)
+        .unwrap_or_else(|_| cli::password("Verify vault password (prompt_hidden):"));
+
+    if pass != vfied {
+        println!("Passwords do not match");
+        return;
+    }
+
+    match &vault.delete() {
+        Ok(_) => println!("Deleted vault {}", &vault.name),
+        Err(msg) => cli::error(&msg),
+    }
+}
+
 fn add(args: &ArgMatches, state: &mut ProgramState) {
     if state.locked_vault.is_none() {
         state.locked_vault = Some(value_t!(args.value_of("vault"), LockedVault).unwrap());
@@ -130,13 +148,13 @@ fn dispatch(matches: &ArgMatches, state: &mut ProgramState, config: &Config) {
     match matches.subcommand() {
         ("open", Some(sargs)) => open(sargs, state, config),
         ("new", Some(sargs)) => new(sargs),
+        ("delete", Some(args)) => delete(args),
         ("export", Some(args)) => export(args, state),
         ("import", Some(args)) => import(args, state),
         ("add", Some(sargs)) => add(sargs, state),
         ("get", Some(args)) => get(args, state, config),
         ("list", Some(args)) => list(args, state),
         ("clear", Some(args)) => clear(args),
-        ("delete", Some(args)) => delete(args),
         _ => {}
     }
 }
@@ -172,24 +190,6 @@ fn import(args: &ArgMatches, state: &mut ProgramState) {
         }
         Err(msg) => cli::error(&msg),
     };
-}
-
-fn delete(args: &ArgMatches) {
-    let vault = value_t!(args.value_of("vault"), LockedVault).unwrap();
-    let pass = value_t!(args.value_of("password"), String)
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
-    let vfied = value_t!(args.value_of("verify"), String)
-        .unwrap_or_else(|_| cli::password("Verify vault password (prompt_hidden):"));
-
-    if pass != vfied {
-        println!("Passwords do not match");
-        return;
-    }
-
-    match &vault.delete() {
-        Ok(_) => println!("Deleted vault {}", &vault.name),
-        Err(msg) => cli::error(&msg),
-    }
 }
 
 fn list(args: &ArgMatches, state: &mut ProgramState) {
