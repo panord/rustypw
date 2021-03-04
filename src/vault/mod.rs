@@ -185,7 +185,7 @@ impl UnlockedVault {
         self.pws.insert(id, password);
     }
 
-    pub fn get(&self, id: String) -> Result<&str, String> {
+    pub fn get(&self, id: String) -> Result<&String, String> {
         match &self.pws.get(&id) {
             Some(pw) => Ok(pw),
             None => Err(format!("Failed to find password {}", id)),

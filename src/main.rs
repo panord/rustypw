@@ -1,17 +1,14 @@
 extern crate rpassword;
-mod cli;
-mod config;
-mod files;
-mod vault;
 
 use clap::{value_t, ArgMatches};
 use config::Config;
+use rlib::*;
 use rustyline::Editor;
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::result::Result;
 use std::string::String;
-use vault::{LockedVault, UnlockedVault};
+pub use vault::{LockedVault, UnlockedVault};
 
 struct ProgramState {
     cancelp: Option<Child>,

@@ -1,4 +1,4 @@
-.PHONY: all build run
+.PHONY: all build run test
 
 .default: build
 
@@ -10,5 +10,8 @@ release:
 
 install: release
 	ln -svf `realpath ./target/release/rpw` `realpath ~/bin`
+
+test:
+	cargo test
 
 all: build
