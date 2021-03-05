@@ -35,6 +35,12 @@ fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) {
             .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):")),
     );
 
+    state
+        .locked_vault
+        .as_ref()
+        .unwrap()
+        .unlock(state.master_pw.as_ref().unwrap())
+        .unwrap();
     let app = cli::build();
     let mut rl = Editor::<()>::new();
     loop {
