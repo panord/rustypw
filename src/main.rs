@@ -3,7 +3,7 @@ extern crate rpassword;
 use clap::{value_t, ArgMatches};
 use config::Config;
 use rlib::*;
-use rustyline::Editor;
+use rustyline::{error::ReadlineError, Editor};
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::result::Result;
@@ -45,21 +45,27 @@ fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) {
     let mut rl = Editor::<()>::new();
     loop {
         let readline = rl.readline(&format!("{}{}", &name, ">> "));
-        if readline.is_ok() {
-            let mut cmd = vec!["rpw"];
-            let line = readline.unwrap();
-            if line.trim().is_empty() {
+        match readline {
+            Ok(line) => {
+                let mut cmd = vec!["rpw"];
+                if line.trim().is_empty() {
+                    continue;
+                }
+                cmd.extend(line.split_whitespace());
+
+                let matches = app.clone().get_matches_from_safe(cmd);
+                match matches {
+                    Ok(m) => dispatch(&m, state, &config),
+                    Err(msg) => println!("{}", msg),
+                };
+            }
+            Err(ReadlineError::Interrupted) => {
                 continue;
             }
-            cmd.extend(line.split_whitespace());
-
-            let matches = app.clone().get_matches_from_safe(cmd);
-            match matches {
-                Ok(m) => dispatch(&m, state, &config),
-                Err(msg) => println!("{}", msg),
-            };
-        } else {
-            println!("{}", readline.unwrap_err());
+            Err(msg) => {
+                println!("{}, exiting", msg);
+                break;
+            }
         }
     }
 }
