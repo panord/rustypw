@@ -89,7 +89,7 @@ fn new(args: &ArgMatches) {
         return;
     }
 
-    let lv = UnlockedVault::new(&vault).lock(&pass);
+    let lv = UnlockedVault::new(&vault).lock(&pass).unwrap();
     if lv.exists()
         && !cli::yesorno(&format!(
             "Vault '{}' already exists, would you like to overwrite it?",
@@ -98,7 +98,7 @@ fn new(args: &ArgMatches) {
     {
         println!("Aborting, not creating vault '{}'.", vault);
     }
-    lv.save();
+    lv.save().unwrap();
     println!("New vault {} created", vault);
 }
 
@@ -138,7 +138,7 @@ fn add(args: &ArgMatches, state: &mut ProgramState) {
 
     let mut uv = vault.unlock(&mpass).unwrap();
     uv.insert(alias, npass);
-    uv.lock(&mpass).save();
+    uv.lock(&mpass).unwrap().save().unwrap();
 }
 
 fn export(args: &ArgMatches, state: &mut ProgramState) {
@@ -156,7 +156,7 @@ fn export(args: &ArgMatches, state: &mut ProgramState) {
     let uv = vault.unlock(&mpass).unwrap();
     match &uv.export(&fpath) {
         Ok(_) => println!("Exported vault {}", &fpath.display()),
-        Err(msg) => cli::error(&msg),
+        Err(msg) => println!("{}", &msg),
     }
 }
 
@@ -202,9 +202,9 @@ fn import(args: &ArgMatches, state: &mut ProgramState) {
                     uv.insert(p.id.clone(), p.pw.clone());
                 }
             });
-            uv.lock(&mpass).save();
+            uv.lock(&mpass).unwrap().save().unwrap();
         }
-        Err(msg) => cli::error(&msg),
+        Err(e) => println!("{}", &e),
     };
 }
 
@@ -259,7 +259,7 @@ fn get(args: &ArgMatches, state: &mut ProgramState, config: &Config) {
             }
             state.cancelp = Some(do_clear(sec));
         }
-        Err(msg) => cli::error(&msg),
+        Err(msg) => println!("{}", msg),
     };
 }
 

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 fn lock_unlock() {
     let uv = UnlockedVault::new("test");
     let pw = "password";
-    if uv.lock(pw).unlock(pw).is_err() {
+    if uv.lock(pw).unwrap().unlock(pw).is_err() {
         panic!("Failed to unlock vault.");
     }
 }
