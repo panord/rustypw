@@ -1,5 +1,3 @@
-extern crate rpassword;
-
 use clap::{value_t, ArgMatches};
 use config::Config;
 use rlib::*;
@@ -8,7 +6,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::result::Result;
 use std::string::String;
-pub use vault::{LockedVault, UnlockedVault};
+use vault::{LockedVault, UnlockedVault};
 
 struct ProgramState {
     cancelp: Option<Child>,

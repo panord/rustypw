@@ -1,12 +1,12 @@
 mod crypto;
 use crate::cli;
 use crate::files;
+use anyhow::{Context, Result};
 use openssl::base64::decode_block;
 use openssl::base64::encode_block;
 use openssl::symm::{decrypt, encrypt, Cipher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -37,46 +37,19 @@ pub struct UnlockedVault {
     pub pws: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
-pub struct VaultError {
-    pub msg: String,
-}
-
-impl VaultError {
-    fn new(msg: &str) -> Self {
-        VaultError {
-            msg: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for VaultError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-macro_rules! vmap_err {
-    ($x:expr, $y:expr) => {
-        $x.map_err(|_| VaultError::new($y))
-    };
-}
-
 impl LockedVault {
-    pub fn unlock(&self, pass: &str) -> Result<UnlockedVault, VaultError> {
-        let salt = vmap_err!(decode_block(&self.salt), "Failed to decode salt")?;
-        let data = vmap_err!(decode_block(&self.enc), "Failed to decode data")?;
-        let iv = vmap_err!(decode_block(&self.iv), "Failed to decode iv")?;
-        let key = vmap_err!(crypto::key(&pass.as_bytes(), &salt), "Failed to derive key")?;
+    pub fn unlock(&self, pass: &str) -> Result<UnlockedVault> {
+        let salt = decode_block(&self.salt).context("Failed to decode salt")?;
+        let data = decode_block(&self.enc).context("Failed to decode data")?;
+        let iv = decode_block(&self.iv).context("Failed to decode iv")?;
+        let key = crypto::key(&pass.as_bytes(), &salt)?;
         let cipher = Cipher::aes_256_cbc();
-        let plain = vmap_err!(
-            decrypt(cipher, &key, Some(&iv), &data),
-            "Ciper could not be decrypted"
-        )?;
+        let plain =
+            decrypt(cipher, &key, Some(&iv), &data).context("Cipher could not be decrypted")?;
 
-        let json = vmap_err!(String::from_utf8(plain), "UTF8 conversion failed")?;
+        let json = String::from_utf8(plain).context("UTF8 conversion failed")?;
         let passwords: HashMap<String, String> =
-            vmap_err!(serde_json::from_str(&json), "Json conversion failed")?;
+            serde_json::from_str(&json).context("JSON conversion failed")?;
 
         Ok(UnlockedVault {
             name: self.name.clone(),
@@ -90,20 +63,12 @@ impl LockedVault {
         path.exists()
     }
 
-    pub fn save(&self) -> Result<(), VaultError> {
+    pub fn save(&self) -> Result<()> {
         let path = files::rpwd_path(&format!("{}{}", self.name, VAULT_EXT));
-        let json = vmap_err!(
-            serde_json::to_string(&self),
-            "Failed to serialize passwords"
-        )?;
-
-        vmap_err!(
-            File::create(&path).and_then(|mut f| {
-                f.write_all(&json.as_bytes())?;
-                Ok(())
-            }),
-            "Failed to save vault"
-        )
+        let json = serde_json::to_string(&self).context("Failed to serialize passwords")?;
+        Ok(File::create(&path)
+            .and_then(|mut f| f.write_all(&json.as_bytes()))
+            .context("Failed to save vault")?)
     }
 
     pub fn delete(&self) -> Result<(), String> {
@@ -119,18 +84,11 @@ impl LockedVault {
 }
 
 impl FromStr for LockedVault {
-    type Err = VaultError;
+    type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let fname = files::rpwd_path(&format!("{}{}", s, VAULT_EXT));
-        match File::open(&fname) {
-            Ok(f) => vmap_err!(
-                serde_json::from_reader::<File, LockedVault>(f),
-                "Failed to deserialize vault"
-            ),
-            Err(_) => Err(VaultError {
-                msg: format!("Failed to open '{}'", &fname.display()),
-            }),
-        }
+        let f = File::open(&fname)?;
+        Ok(serde_json::from_reader::<File, LockedVault>(f)?)
     }
 }
 
@@ -146,14 +104,9 @@ impl UnlockedVault {
         }
     }
 
-    pub fn import(&mut self, path: &PathBuf) -> Result<Vec<Password>, VaultError> {
-        let pws: Vec<Password> =
-            vmap_err!(File::open(&path), "Failed to open vault").and_then(|f| {
-                vmap_err!(
-                    serde_json::from_reader::<File, Vec<Password>>(f),
-                    "Failed to deserialize vault"
-                )
-            })?;
+    pub fn import(&mut self, path: &PathBuf) -> Result<Vec<Password>> {
+        let f = File::open(&path)?;
+        let pws: Vec<Password> = serde_json::from_reader::<File, Vec<Password>>(f)?;
 
         let dup = pws
             .iter()
@@ -164,7 +117,7 @@ impl UnlockedVault {
         Ok(dup)
     }
 
-    pub fn export(&self, path: &PathBuf) -> Result<(), VaultError> {
+    pub fn export(&self, path: &PathBuf) -> Result<()> {
         let pws: Vec<Password> = self
             .pws
             .iter()
@@ -173,31 +126,23 @@ impl UnlockedVault {
                 pw: v.to_string(),
             })
             .collect();
-        let json = vmap_err!(
-            serde_json::to_string_pretty(&pws),
-            "Failed to serialize vault"
-        )?;
-        vmap_err!(File::create(&path), "Failed to create vault")
-            .and_then(|mut f| vmap_err!(f.write_all(&json.as_bytes()), "Failed to write file"))?;
+        let json = serde_json::to_string_pretty(&pws).context("Failed to serialize vault")?;
+        File::create(&path).and_then(|mut f| f.write_all(&json.as_bytes()))?;
         Ok(())
     }
 
-    pub fn lock(&self, pass: &str) -> Result<LockedVault, VaultError> {
+    pub fn lock(&self, pass: &str) -> Result<LockedVault> {
         let cipher = Cipher::aes_256_cbc();
         let salt = &self.salt;
-        let key = vmap_err!(crypto::key(&pass.as_bytes(), &salt), "Failed to derive key")?;
-        let data = vmap_err!(
-            serde_json::to_string_pretty(&self.pws),
-            "Failed to serialize passwords"
-        )?;
+        let key = crypto::key(&pass.as_bytes(), &salt).context("Failed to derive key")?;
+        let data =
+            serde_json::to_string_pretty(&self.pws).context("Failed to serialize passwords")?;
         let key = key;
 
         let mut iv = [0; IV_LEN];
         crypto::rand_bytes(&mut iv);
-        let ciphertext = vmap_err!(
-            encrypt(cipher, &key, Some(&iv), data.as_bytes()),
-            "Failed to encrypt plaintext"
-        )?;
+        let ciphertext = encrypt(cipher, &key, Some(&iv), data.as_bytes())
+            .context("Failed to encrypt plaintext")?;
         Ok(LockedVault {
             name: self.name.clone(),
             iv: encode_block(&iv.to_vec()),
