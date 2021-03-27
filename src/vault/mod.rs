@@ -1,7 +1,7 @@
 mod crypto;
 use crate::cli;
 use crate::files;
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use openssl::base64::decode_block;
 use openssl::base64::encode_block;
 use openssl::symm::{decrypt, encrypt, Cipher};
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
+use std::option::Option;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::string::String;
@@ -71,7 +72,7 @@ impl LockedVault {
             .context("Failed to save vault")?)
     }
 
-    pub fn delete(&self) -> Result<(), String> {
+    pub fn delete(&self) -> Result<()> {
         if cli::yesorno(
             format!("Would you really like to delete the vault {}?", &self.name).as_str(),
         ) && cli::yesorno("Are you reaaaaally sure? It's permanent.")
@@ -79,7 +80,7 @@ impl LockedVault {
             files::delete(format!("{}{}", &self.name, VAULT_EXT).as_str())?;
             return Ok(());
         }
-        return Err("Did not delete vault".to_string());
+        return Err(anyhow!("Did not delete vault"));
     }
 }
 
@@ -163,10 +164,7 @@ impl UnlockedVault {
         self.pws.insert(id, password);
     }
 
-    pub fn get(&self, id: String) -> Result<&String, String> {
-        match &self.pws.get(&id) {
-            Some(pw) => Ok(pw),
-            None => Err(format!("Failed to find password {}", id)),
-        }
+    pub fn get(&self, id: String) -> Option<&String> {
+        self.pws.get(&id)
     }
 }

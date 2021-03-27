@@ -1,4 +1,5 @@
 const RPW_DIR: &'static str = ".rpw.d";
+use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn rpwd() -> PathBuf {
@@ -9,11 +10,9 @@ pub fn rpwd_path(name: &str) -> PathBuf {
     rpwd().join(name.to_string())
 }
 
-pub fn delete(name: &str) -> Result<(), String> {
+pub fn delete(name: &str) -> Result<()> {
     let rpw_d = dirs::home_dir().unwrap().join(RPW_DIR);
     let fname = rpw_d.join(&name);
-    match std::fs::remove_file(&fname) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(format!("Failed to delete '{}'", fname.display())),
-    }
+    std::fs::remove_file(&fname)?;
+    Ok(())
 }
