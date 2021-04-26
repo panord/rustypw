@@ -47,7 +47,7 @@ fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) -> Result<
     let app = cli::build();
     let mut rl = Editor::<()>::new();
     loop {
-        let readline = rl.readline(&format!("{}{}", &name, ">> "));
+        let readline = rl.readline(&format!("{}{}", &name, "$ "));
         match readline {
             Ok(line) => {
                 let mut cmd = vec!["rpw"];
