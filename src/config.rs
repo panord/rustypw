@@ -22,6 +22,7 @@ impl Config {
         let fname = files::rpwd_path("config.json");
         let json = serde_json::to_string_pretty(&self).expect("Failed to serialize passwords");
 
+        std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
         File::create(&fname)
             .and_then(|mut f| {
                 f.write_all(&json.as_bytes()).expect("Failed to write file");

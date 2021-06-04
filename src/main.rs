@@ -274,12 +274,11 @@ fn dispatch(matches: &ArgMatches, state: &mut ProgramState, config: &Config) {
 fn main() {
     let mut state = ProgramState::new();
     let config: Result<Config, Config> = Config::load().or_else(|_| Ok(Config::new().save()));
-
     let app = cli::build();
     let matches = app.clone().get_matches_safe();
+
     match matches {
         Ok(m) => dispatch(&m, &mut state, &config.unwrap()),
         Err(msg) => println!("{}", msg),
     };
-    std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
 }
