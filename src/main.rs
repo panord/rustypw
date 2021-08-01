@@ -110,7 +110,7 @@ fn delete(args: &ArgMatches) -> Result<()> {
         return Err(anyhow!("Passwords do not match"));
     }
 
-    &vault.delete().context("Failed deleting vault.")?;
+    vault.delete().context("Failed deleting vault.")?;
     println!("Deleted vault {}", &vault.name);
     Ok(())
 }
@@ -152,7 +152,7 @@ fn export(args: &ArgMatches, state: &mut ProgramState) -> Result<()> {
         .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
 
     let uv = vault.unlock(&mpass)?;
-    &uv.export(&fpath)?;
+    uv.export(&fpath)?;
     println!("Exported vault {}", &fpath.display());
     Ok(())
 }
