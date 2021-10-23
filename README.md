@@ -1,8 +1,8 @@
 # rustypw
 rpw - rusty password manager is basically a small cli password manager.
 
-The passwords are stored encrypted with AES256 in CBC mode with a nonce iv. The key is generated
-with argon2 using a randomly generated salt and password.
+The passwords are stored encrypted with AES256 in CBC mode with a nonce iv. The
+key is generated with argon2 using a randomly generated salt and password.
 
 ## Build
 There are some simple wrappers around cargo commands. `make`
