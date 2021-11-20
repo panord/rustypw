@@ -1,7 +1,7 @@
 [package]
-name = "rpw"
-version = "0.1.0"
-authors = ["Patrik Lundgren <patrik.lundgren@outlook.com>"]
+name = "rustypw"
+version = "0.1.1"
+authors = ["Patrik Lundgren <patrik.lundgren.95@gmail.com>"]
 edition = "2018"
 description = "A simple, small cli based password manager"
 repository = "https://github.com/PatrikLundgren/rustypw"
