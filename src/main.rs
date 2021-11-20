@@ -36,7 +36,7 @@ fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) -> Result<
     state.locked_vault = Some(lv);
     state.master_pw = Some(
         value_t!(args.value_of("password"), String)
-            .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):")),
+            .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):")),
     );
 
     state
@@ -77,9 +77,9 @@ fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) -> Result<
 fn new(args: &ArgMatches) -> Result<()> {
     let vault = value_t!(args.value_of("vault"), String).unwrap();
     let pass = value_t!(args.value_of("password"), String)
-        .unwrap_or_else(|_| cli::password("Please choose vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please choose vault password (hidden):"));
     let vfied = value_t!(args.value_of("verify"), String)
-        .unwrap_or_else(|_| cli::password("Verify vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Verify vault password (hidden):"));
 
     if pass != vfied {
         return Err(anyhow!("Passwords do not match"));
@@ -102,9 +102,9 @@ fn new(args: &ArgMatches) -> Result<()> {
 fn delete(args: &ArgMatches) -> Result<()> {
     let vault = value_t!(args.value_of("vault"), LockedVault).context("Could not find vault")?;
     let pass = value_t!(args.value_of("password"), String)
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):"));
     let vfied = value_t!(args.value_of("verify"), String)
-        .unwrap_or_else(|_| cli::password("Verify vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Verify vault password (hidden):"));
 
     if pass != vfied {
         return Err(anyhow!("Passwords do not match"));
@@ -126,11 +126,11 @@ fn add(args: &ArgMatches, state: &mut ProgramState) -> Result<()> {
         .master_pw
         .clone()
         .ok_or_else(|| value_t!(args.value_of("password"), String))
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):"));
 
     let alias = value_t!(args.value_of("alias"), String).unwrap();
     let npass = value_t!(args.value_of("new-password"), String)
-        .unwrap_or_else(|_| cli::password("Please enter new password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please enter new password (hidden):"));
 
     let mut uv = vault.unlock(&mpass)?;
     uv.insert(alias, npass);
@@ -149,7 +149,7 @@ fn export(args: &ArgMatches, state: &mut ProgramState) -> Result<()> {
         .master_pw
         .clone()
         .ok_or_else(|| value_t!(args.value_of("password"), String))
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):"));
 
     let uv = vault.unlock(&mpass)?;
     uv.export(&fpath)?;
@@ -170,7 +170,7 @@ fn import(args: &ArgMatches, state: &mut ProgramState) -> Result<()> {
         .master_pw
         .clone()
         .ok_or_else(|| value_t!(args.value_of("password"), String))
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):"));
 
     let mut uv = vault.unlock(&mpass).unwrap();
     let dup = &uv.import(&fpath)?;
@@ -198,7 +198,7 @@ fn list(args: &ArgMatches, state: &mut ProgramState) -> Result<()> {
         .master_pw
         .clone()
         .ok_or_else(|| value_t!(args.value_of("password"), String))
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):"));
 
     let uv = vault.unlock(&mpass).unwrap();
     let ids: Vec<&String> = uv.pws.iter().map(|p| p.0).collect();
@@ -222,7 +222,7 @@ fn get(args: &ArgMatches, state: &mut ProgramState, config: &Config) -> Result<(
         .master_pw
         .clone()
         .ok_or_else(|| value_t!(args.value_of("password"), String))
-        .unwrap_or_else(|_| cli::password("Please enter vault password (prompt_hidden):"));
+        .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):"));
 
     let sec = value_t!(args.value_of("sec"), u64).unwrap_or_else(|_| config.clear_copy_timeout);
     let id = value_t!(args.value_of("alias"), String).unwrap();
