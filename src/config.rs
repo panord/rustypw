@@ -1,4 +1,5 @@
 use crate::files;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::prelude::*;
@@ -9,13 +10,12 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load() -> Result<Self, ()> {
+    pub fn load() -> Result<Self> {
         let fname = files::rpwd_path("config.json");
-        match File::open(&fname) {
-            Ok(f) => Ok(serde_json::from_reader::<File, Config>(f)
-                .expect("Failed deserializing configuration")),
-            Err(_) => Err(()),
-        }
+        let f = File::open(&fname).map_err(|_| anyhow!("Failed to open configuration"))?;
+
+        serde_json::from_reader::<File, Config>(f)
+            .map_err(|_| anyhow!("Failed deserializing configuration"))
     }
 
     pub fn save(&self) -> Self {
@@ -24,18 +24,24 @@ impl Config {
 
         std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
         File::create(&fname)
-            .and_then(|mut f| {
-                f.write_all(&json.as_bytes()).expect("Failed to write file");
-                Ok(())
+            .map(|mut f| {
+                f.write_all(json.as_bytes()).expect("Failed to write file");
             })
-            .or_else(|_| Err(format!("Failed to create database {}", fname.display())))
+            .map_err(|_| format!("Failed to create database {}", fname.display()))
             .expect("Failed to create vault file");
-        return self.clone();
+
+        self.clone()
     }
 
     pub fn new() -> Self {
         Config {
             clear_copy_timeout: 5,
         }
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
     }
 }

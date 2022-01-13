@@ -18,7 +18,7 @@ pub fn yesorno(msg: &str) -> bool {
         .read_line(&mut ans)
         .expect("Failed reading from stdin");
 
-    match ans.to_ascii_lowercase().replace("\n", "").as_str() {
+    match ans.to_ascii_lowercase().replace('\n', "").as_str() {
         "y" | "yes" => true,
         "n" | "no" => false,
         _ => yesorno("Please eneter y or n"),

@@ -1,6 +1,7 @@
-const RPW_DIR: &'static str = ".rpw.d";
 use anyhow::Result;
 use std::path::PathBuf;
+
+const RPW_DIR: &str = ".rpw.d";
 
 pub fn rpwd() -> PathBuf {
     dirs::home_dir().unwrap().join(RPW_DIR)
