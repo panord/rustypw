@@ -6,17 +6,18 @@ use openssl::base64::decode_block;
 use openssl::base64::encode_block;
 use openssl::symm::{decrypt, encrypt, Cipher};
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::option::Option;
-use std::path::PathBuf;
+use std::path::Path;
 use std::str::FromStr;
 use std::string::String;
 
 const SALT_LEN: usize = 256;
 const IV_LEN: usize = 16;
-const VAULT_EXT: &'static str = ".vlt";
+const VAULT_EXT: &str = ".vlt";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Password {
@@ -43,7 +44,7 @@ impl LockedVault {
         let salt = decode_block(&self.salt).context("Failed to decode salt")?;
         let data = decode_block(&self.enc).context("Failed to decode data")?;
         let iv = decode_block(&self.iv).context("Failed to decode iv")?;
-        let key = crypto::key(&pass.as_bytes(), &salt)?;
+        let key = crypto::key(pass.as_bytes(), &salt)?;
         let cipher = Cipher::aes_256_cbc();
         let plain =
             decrypt(cipher, &key, Some(&iv), &data).context("Cipher could not be decrypted")?;
@@ -54,7 +55,7 @@ impl LockedVault {
 
         Ok(UnlockedVault {
             name: self.name.clone(),
-            salt: salt,
+            salt,
             pws: passwords,
         })
     }
@@ -67,9 +68,10 @@ impl LockedVault {
     pub fn save(&self) -> Result<()> {
         let path = files::rpwd_path(&format!("{}{}", self.name, VAULT_EXT));
         let json = serde_json::to_string(&self).context("Failed to serialize passwords")?;
-        Ok(File::create(&path)
-            .and_then(|mut f| f.write_all(&json.as_bytes()))
-            .context("Failed to save vault")?)
+
+        File::create(&path)
+            .and_then(|mut f| f.write_all(json.as_bytes()))
+            .context("Failed to save vault")
     }
 
     pub fn delete(&self) -> Result<()> {
@@ -105,20 +107,20 @@ impl UnlockedVault {
         }
     }
 
-    pub fn import(&mut self, path: &PathBuf) -> Result<Vec<Password>> {
+    pub fn import(&mut self, path: &Path) -> Result<Vec<Password>> {
         let f = File::open(&path)?;
         let pws: Vec<Password> = serde_json::from_reader::<File, Vec<Password>>(f)?;
 
         let dup = pws
             .iter()
             .filter(|p| !self.try_insert(p.id.clone(), p.pw.clone()))
-            .map(|p| p.clone())
+            .cloned()
             .collect();
 
         Ok(dup)
     }
 
-    pub fn export(&self, path: &PathBuf) -> Result<()> {
+    pub fn export(&self, path: &Path) -> Result<()> {
         let pws: Vec<Password> = self
             .pws
             .iter()
@@ -128,14 +130,14 @@ impl UnlockedVault {
             })
             .collect();
         let json = serde_json::to_string_pretty(&pws).context("Failed to serialize vault")?;
-        File::create(&path).and_then(|mut f| f.write_all(&json.as_bytes()))?;
+        File::create(&path).and_then(|mut f| f.write_all(json.as_bytes()))?;
         Ok(())
     }
 
     pub fn lock(&self, pass: &str) -> Result<LockedVault> {
         let cipher = Cipher::aes_256_cbc();
         let salt = &self.salt;
-        let key = crypto::key(&pass.as_bytes(), &salt).context("Failed to derive key")?;
+        let key = crypto::key(pass.as_bytes(), salt).context("Failed to derive key")?;
         let data =
             serde_json::to_string_pretty(&self.pws).context("Failed to serialize passwords")?;
         let key = key;
@@ -153,11 +155,12 @@ impl UnlockedVault {
     }
 
     pub fn try_insert(&mut self, id: String, password: String) -> bool {
-        if !self.pws.contains_key(&id) {
-            self.pws.insert(id, password);
+        if let Entry::Vacant(e) = self.pws.entry(id) {
+            e.insert(password);
             return true;
         }
-        return false;
+
+        false
     }
 
     pub fn insert(&mut self, id: String, password: String) {

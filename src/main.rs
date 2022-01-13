@@ -58,7 +58,7 @@ fn open(args: &ArgMatches, state: &mut ProgramState, config: &Config) -> Result<
 
                 let matches = app.clone().get_matches_from_safe(cmd);
                 match matches {
-                    Ok(m) => dispatch(&m, state, &config),
+                    Ok(m) => dispatch(&m, state, config),
                     Err(msg) => println!("{}", msg),
                 };
             }
@@ -227,8 +227,8 @@ fn get(args: &ArgMatches, state: &mut ProgramState, config: &Config) -> Result<(
     let sec = value_t!(args.value_of("sec"), u64).unwrap_or_else(|_| config.clear_copy_timeout);
     let id = value_t!(args.value_of("alias"), String).unwrap();
     let uv = vault.unlock(&mpass)?;
-    let pass = uv.get(id.to_string()).context("Failed to get password")?;
-    cli::xclip::to_clipboard(&pass);
+    let pass = uv.get(id).context("Failed to get password")?;
+    cli::xclip::to_clipboard(pass);
     if let Some(cp) = state.cancelp.as_mut() {
         ignore!(cp.kill());
     }
