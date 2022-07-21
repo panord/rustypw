@@ -134,7 +134,8 @@ fn add(args: &ArgMatches, state: &mut ProgramState) -> Result<()> {
 
     let mut uv = vault.unlock(&mpass)?;
     uv.insert(alias, npass);
-    uv.lock(&mpass)?.save()?;
+    state.locked_vault = Some(uv.lock(&mpass)?);
+    state.locked_vault.as_ref().unwrap().save()?;
     Ok(())
 }
 
