@@ -67,7 +67,10 @@ pub mod cli {
 
     #[derive(Parser, Debug, Clone)]
     pub struct OpenArgs {
+        #[arg(short, long)]
         pub vault: String,
+        #[arg(short, long)]
+        pub password: String,
     }
 
     #[derive(Parser, Debug, Clone)]

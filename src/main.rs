@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use cli::cli::*;
 use config::Config;
 use rlib::*;
-// use rustyline::{error::ReadlineError, Editor};
+use rustyline::{error::ReadlineError, Editor};
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::string::String;
@@ -30,48 +30,41 @@ macro_rules! ignore {
     };
 }
 
-// fn open(args: &OpenArgs, state: &mut ProgramState, config: &Config) -> Result<()> {
-//     let lv = value_t!(args.value_of("vault"), LockedVault).context("Could not find vault")?;
-//     let name = lv.name.clone();
-//     state.locked_vault = Some(lv);
-//     state.master_pw = Some(
-//         value_t!(args.value_of("password"), String)
-//             .unwrap_or_else(|_| cli::password("Please enter vault password (hidden):")),
-//     );
+fn open(args: &OpenArgs, state: &mut ProgramState, _: &Config) -> Result<()> {
+    let lv = args.vault.parse::<LockedVault>()?;
+    let name = lv.name.clone();
+    state.locked_vault = Some(lv);
+    let mpass = match state.master_pw.clone() {
+        None => cli::password("Please enter vault password (hidden):"),
+        Some(p) => {
+            state.master_pw = Some(p.clone());
+            p.clone()
+        }
+    };
 
-//     state
-//         .locked_vault
-//         .as_ref()
-//         .unwrap()
-//         .unlock(state.master_pw.as_ref().unwrap())?;
-//     let mut rl = Editor::<()>::new();
-//     loop {
-//         let readline = rl.readline(&format!("{}{}", &name, "$ "));
-//         match readline {
-//             Ok(line) => {
-//                 let mut cmd = vec!["rpw"];
-//                 if line.trim().is_empty() {
-//                     continue;
-//                 }
-//                 cmd.extend(line.split_whitespace());
-
-//                 let matches = app.clone().get_matches_from_safe(cmd);
-//                 match matches {
-//                     Ok(m) => dispatch(&m, state, config),
-//                     Err(msg) => println!("{}", msg),
-//                 };
-//             }
-//             Err(ReadlineError::Interrupted) => {
-//                 continue;
-//             }
-//             Err(msg) => {
-//                 println!("{}, exiting", msg);
-//                 break;
-//             }
-//         }
-//     }
-//     Ok(())
-// }
+    state.locked_vault.as_ref().unwrap().unlock(&mpass)?;
+    let mut rl = Editor::<()>::new();
+    loop {
+        let readline = rl.readline(&format!("{}{}", &name, "$ "));
+        match readline {
+            Ok(line) => {
+                let mut cmd = vec!["rpw"];
+                if line.trim().is_empty() {
+                    continue;
+                }
+                cmd.extend(line.split_whitespace());
+            }
+            Err(ReadlineError::Interrupted) => {
+                continue;
+            }
+            Err(msg) => {
+                println!("{}, exiting", msg);
+                break;
+            }
+        }
+    }
+    Ok(())
+}
 
 fn new(args: &NewArgs) -> Result<()> {
     let vault = &args.vault;
@@ -286,7 +279,7 @@ fn main() {
     let app = cli::cli::RpwCli::cli();
 
     match app.command {
-        cli::cli::Command::Open(args) => Err(anyhow!("Not Implemented")),
+        cli::cli::Command::Open(args) => open(&args, &mut state, &config),
         cli::cli::Command::Clear(args) => clear(&args),
         cli::cli::Command::Get(args) => get(&args, &mut state, &config),
         cli::cli::Command::List(args) => list(&args, &mut state),
