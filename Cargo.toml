@@ -24,7 +24,7 @@ rpassword = "4.0"
 rust-argon2 = "0.5"
 openssl = { version = "0.10", features = ["vendored"] }
 rustyline = "6.3.0"
-clap = "2.33.3"
+clap = { version = "4.1", features = ["derive"]}
 anyhow = "1.0"
 
 [lib]

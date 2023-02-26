@@ -1,4 +1,3 @@
-use clap::{App, Arg, SubCommand};
 use std::io::stdin;
 use std::io::stdout;
 use std::io::Write;
@@ -63,146 +62,115 @@ pub mod xclip {
     }
 }
 
-pub fn build() -> clap::App<'static, 'static> {
-    let mut app = App::new("rpw - the rusty password manager")
-        .version("2021")
-        .author("Patrik Lundgren <patrik.lundgren@outlook.com>")
-        .about(
-            "rpw is a small cli-only password manager for your terminal
-            copy pasting needs.",
-        );
+pub mod cli {
+    use clap::{Parser, Subcommand};
 
-    app = app.subcommand(
-        SubCommand::with_name("open")
-            .about("Open a password encrypted vault.")
-            .arg(Arg::with_name("vault").required(true).takes_value(true)),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct OpenArgs {
+        pub vault: String,
+    }
 
-    app = app.subcommand(
-        SubCommand::with_name("clear")
-            .about("Clear the clipboard register.")
-            .arg(Arg::with_name("sec").takes_value(true).required(true)),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct ClearArgs {
+        #[arg(short, long)]
+        pub sec: u64,
+    }
 
-    app = app.subcommand(
-        SubCommand::with_name("get")
-            .about("Decrypt the vault and fetch a password to the clipboard.")
-            .arg(Arg::with_name("vault").long("vault").short("v"))
-            .arg(
-                Arg::with_name("password")
-                    .long("password")
-                    .short("p")
-                    .takes_value(true),
-            )
-            .arg(Arg::with_name("alias").required(true).takes_value(true)),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct GetArgs {
+        #[arg(short, long)]
+        pub alias: String,
+        #[arg(short, long)]
+        pub vault: String,
+        #[arg(short, long)]
+        pub sec: u32,
+    }
 
-    app = app.subcommand(
-        SubCommand::with_name("list")
-            .about("List the stored passwords of a vault by alias.")
-            .arg(
-                Arg::with_name("vault")
-                    .long("vault")
-                    .short("v")
-                    .takes_value(true),
-            )
-            .arg(
-                Arg::with_name("password")
-                    .long("password")
-                    .short("p")
-                    .takes_value(true),
-            ),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct ListArgs {
+        #[arg(short, long)]
+        pub vault: String,
+        #[arg(short, long)]
+        pub password: String,
+    }
 
-    app = app.subcommand(
-        SubCommand::with_name("export")
-            .about("Export the vault to a plain-text json format.")
-            .arg(
-                Arg::with_name("vault")
-                    .long("vault")
-                    .short("v")
-                    .takes_value(true),
-            )
-            .arg(Arg::with_name("file-path").required(true).takes_value(true))
-            .arg(
-                Arg::with_name("password")
-                    .long("password")
-                    .short("p")
-                    .takes_value(true),
-            ),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct ImportArgs {
+        #[arg(short, long)]
+        pub file_path: String,
+        #[arg(short, long)]
+        pub vault: String,
+        #[arg(short, long)]
+        pub password: Option<String>,
+        #[arg(short, long)]
+        pub verify: Option<String>,
+    }
 
-    app = app.subcommand(
-        SubCommand::with_name("new")
-            .about("Create a new password encrypted vault.")
-            .arg(
-                Arg::with_name("vault")
-                    .long("vault")
-                    .short("v")
-                    .required(true)
-                    .takes_value(true),
-            )
-            .arg(
-                Arg::with_name("password")
-                    .long("password")
-                    .short("p")
-                    .takes_value(true),
-            )
-            .arg(
-                Arg::with_name("verify")
-                    .long("verify")
-                    .short("v")
-                    .takes_value(true),
-            ),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct ExportArgs {
+        #[arg(short, long)]
+        pub file_path: String,
+        #[arg(short, long)]
+        pub vault: String,
+        #[arg(short, long)]
+        pub password: String,
+    }
 
-    app = app.subcommand(
-        SubCommand::with_name("delete")
-            .about("Delete an existing vault.")
-            .arg(
-                Arg::with_name("vault")
-                    .long("vault")
-                    .short("v")
-                    .required(true)
-                    .takes_value(true),
-            )
-            .arg(
-                Arg::with_name("password")
-                    .long("password")
-                    .short("p")
-                    .takes_value(true),
-            )
-            .arg(
-                Arg::with_name("verify")
-                    .long("verify")
-                    .short("v")
-                    .takes_value(true),
-            ),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct NewArgs {
+        #[arg(short, long)]
+        pub vault: String,
+        #[arg(short, long)]
+        pub password: Option<String>,
+        #[arg(short, long)]
+        pub verify: Option<String>,
+    }
 
-    app = app.subcommand(
-        SubCommand::with_name("add")
-            .about("Add a password to the vault.")
-            .arg(
-                Arg::with_name("vault")
-                    .long("vault")
-                    .short("v")
-                    .takes_value(true),
-            )
-            .arg(Arg::with_name("alias").required(true).takes_value(true))
-            .arg(
-                Arg::with_name("password")
-                    .long("password")
-                    .short("p")
-                    .takes_value(true),
-            )
-            .arg(
-                Arg::with_name("new-password")
-                    .long("new-password")
-                    .short("n")
-                    .takes_value(true),
-            ),
-    );
+    #[derive(Parser, Debug, Clone)]
+    pub struct DelArgs {
+        #[arg(short, long)]
+        pub vault: String,
+        #[arg(short, long)]
+        pub password: Option<String>,
+        #[arg(short, long)]
+        pub verify: Option<String>,
+    }
 
-    app
+    #[derive(Parser, Debug, Clone)]
+    pub struct AddArgs {
+        #[arg(short, long)]
+        pub vault: String,
+        #[arg(short, long)]
+        pub alias: String,
+        #[arg(short, long)]
+        pub password: Option<String>,
+        #[arg(short, long)]
+        pub new_password: Option<String>,
+    }
+
+    #[derive(Subcommand, Debug, Clone)]
+    pub enum Command {
+        Open(OpenArgs),
+        Clear(ClearArgs),
+        Get(GetArgs),
+        List(ListArgs),
+        Import(ImportArgs),
+        Export(ExportArgs),
+        New(NewArgs),
+        Delete(DelArgs),
+        Add(AddArgs),
+    }
+
+    #[derive(Parser, Debug)]
+    #[clap(about, version, author)]
+    pub struct RpwCli {
+        #[command(subcommand)]
+        pub command: Command,
+    }
+
+    impl RpwCli {
+        pub fn cli() -> Self {
+            RpwCli::parse()
+        }
+    }
 }

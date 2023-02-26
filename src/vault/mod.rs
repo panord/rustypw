@@ -167,7 +167,7 @@ impl UnlockedVault {
         self.pws.insert(id, password);
     }
 
-    pub fn get(&self, id: String) -> Option<&String> {
-        self.pws.get(&id)
+    pub fn get(&self, id: &str) -> Option<&String> {
+        self.pws.get(id)
     }
 }

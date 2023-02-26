@@ -1,4 +1,5 @@
 use crate::files;
+use anyhow::Context;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -18,11 +19,11 @@ impl Config {
             .map_err(|_| anyhow!("Failed deserializing configuration"))
     }
 
-    pub fn save(&self) -> Self {
+    pub fn save(&self) -> Result<&Self> {
         let fname = files::rpwd_path("config.json");
-        let json = serde_json::to_string_pretty(&self).expect("Failed to serialize passwords");
+        let json = serde_json::to_string_pretty(&self).context("Failed to serialize passwords")?;
 
-        std::fs::create_dir_all(&files::rpwd()).expect("Failed to create rpw dir");
+        std::fs::create_dir_all(&files::rpwd()).context("Failed to create rpw dir")?;
         File::create(&fname)
             .map(|mut f| {
                 f.write_all(json.as_bytes()).expect("Failed to write file");
@@ -30,7 +31,7 @@ impl Config {
             .map_err(|_| format!("Failed to create database {}", fname.display()))
             .expect("Failed to create vault file");
 
-        self.clone()
+        Ok(self)
     }
 
     pub fn new() -> Self {
