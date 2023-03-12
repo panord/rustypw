@@ -67,7 +67,7 @@ pub mod cli {
 
     #[derive(Parser, Debug, Clone)]
     pub struct OpenArgs {
-        #[arg(short, long)]
+        #[arg(index = 1)]
         pub vault: String,
         #[arg(short, long)]
         pub password: String,
@@ -81,17 +81,17 @@ pub mod cli {
 
     #[derive(Parser, Debug, Clone)]
     pub struct GetArgs {
-        #[arg(short, long)]
-        pub alias: String,
-        #[arg(short, long)]
+        #[arg(index = 1)]
         pub vault: String,
+        #[arg(index = 2)]
+        pub alias: String,
         #[arg(short, long)]
         pub sec: u32,
     }
 
     #[derive(Parser, Debug, Clone)]
     pub struct ListArgs {
-        #[arg(short, long)]
+        #[arg(index = 1)]
         pub vault: String,
         #[arg(short, long)]
         pub password: String,
@@ -99,51 +99,51 @@ pub mod cli {
 
     #[derive(Parser, Debug, Clone)]
     pub struct ImportArgs {
-        #[arg(short, long)]
+        #[arg(index = 1)]
+        pub vault: String,
+        #[arg(index = 2)]
         pub file_path: String,
         #[arg(short, long)]
-        pub vault: String,
-        #[arg(short, long)]
         pub password: Option<String>,
-        #[arg(short, long)]
+        #[arg(long)]
         pub verify: Option<String>,
     }
 
     #[derive(Parser, Debug, Clone)]
     pub struct ExportArgs {
-        #[arg(short, long)]
-        pub file_path: String,
-        #[arg(short, long)]
+        #[arg(index = 1)]
         pub vault: String,
+        #[arg(index = 2)]
+        pub file_path: String,
         #[arg(short, long)]
         pub password: String,
     }
 
     #[derive(Parser, Debug, Clone)]
     pub struct NewArgs {
-        #[arg(short, long)]
+        #[arg(index = 1)]
         pub vault: String,
         #[arg(short, long)]
         pub password: Option<String>,
-        #[arg(short, long)]
+        #[arg(long)]
         pub verify: Option<String>,
     }
 
     #[derive(Parser, Debug, Clone)]
     pub struct DelArgs {
-        #[arg(short, long)]
+        #[arg(index = 1)]
         pub vault: String,
         #[arg(short, long)]
         pub password: Option<String>,
-        #[arg(short, long)]
+        #[arg(long)]
         pub verify: Option<String>,
     }
 
     #[derive(Parser, Debug, Clone)]
     pub struct AddArgs {
-        #[arg(short, long)]
+        #[arg(index = 1)]
         pub vault: String,
-        #[arg(short, long)]
+        #[arg(index = 2)]
         pub alias: String,
         #[arg(short, long)]
         pub password: Option<String>,
