@@ -29,5 +29,5 @@ fn import_export() {
     if import.import(&fpath).is_err() {
         panic!("Failed importing vault");
     }
-    assert_eq!(import.get(key.clone()), Some(&stored));
+    assert_eq!(import.get(&key), Some(&stored));
 }

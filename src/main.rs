@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use clap::Parser;
 use cli::cli::*;
 use config::Config;
 use rlib::*;
@@ -30,7 +31,7 @@ macro_rules! ignore {
     };
 }
 
-fn open(args: &OpenArgs, state: &mut ProgramState, _: &Config) -> Result<()> {
+fn open(args: &OpenArgs, state: &mut ProgramState, config: &Config) -> Result<()> {
     let lv = args.vault.parse::<LockedVault>()?;
     let name = lv.name.clone();
     state.locked_vault = Some(lv);
@@ -53,6 +54,7 @@ fn open(args: &OpenArgs, state: &mut ProgramState, _: &Config) -> Result<()> {
                     continue;
                 }
                 cmd.extend(line.split_whitespace());
+                let _ = dispatch(cli::cli::RpwCli::parse_from(cmd), state, config);
             }
             Err(ReadlineError::Interrupted) => {
                 continue;
@@ -270,24 +272,26 @@ fn clear(args: &ClearArgs) -> Result<()> {
     Ok(())
 }
 
+fn dispatch(cli: RpwCli, state: &mut ProgramState, config: &Config) -> Result<()> {
+    match &cli.command {
+        cli::cli::Command::Open(args) => open(&args, state, &config),
+        cli::cli::Command::Clear(args) => clear(&args),
+        cli::cli::Command::Get(args) => get(&args, state, &config),
+        cli::cli::Command::List(args) => list(&args, state),
+        cli::cli::Command::Import(args) => import(&args, state),
+        cli::cli::Command::Export(args) => export(&args, state),
+        cli::cli::Command::New(args) => new(&args),
+        cli::cli::Command::Delete(args) => delete(&args),
+        cli::cli::Command::Add(args) => add(&args, state),
+    }
+}
+
 fn main() {
     let mut state = ProgramState::new();
     let config: Config = Config::load()
         .or_else(|_| Ok::<Config, anyhow::Error>(Config::new()))
         .expect("Failed to load configuration");
 
-    let app = cli::cli::RpwCli::cli();
-
-    match app.command {
-        cli::cli::Command::Open(args) => open(&args, &mut state, &config),
-        cli::cli::Command::Clear(args) => clear(&args),
-        cli::cli::Command::Get(args) => get(&args, &mut state, &config),
-        cli::cli::Command::List(args) => list(&args, &mut state),
-        cli::cli::Command::Import(args) => import(&args, &mut state),
-        cli::cli::Command::Export(args) => export(&args, &mut state),
-        cli::cli::Command::New(args) => new(&args),
-        cli::cli::Command::Delete(args) => delete(&args),
-        cli::cli::Command::Add(args) => add(&args, &mut state),
-    }
-    .unwrap();
+    let app = cli::cli::RpwCli::parse();
+    dispatch(app, &mut state, &config).unwrap();
 }

@@ -70,7 +70,7 @@ pub mod cli {
         #[arg(index = 1)]
         pub vault: String,
         #[arg(short, long)]
-        pub password: String,
+        pub password: Option<String>,
     }
 
     #[derive(Parser, Debug, Clone)]
@@ -94,7 +94,7 @@ pub mod cli {
         #[arg(index = 1)]
         pub vault: String,
         #[arg(short, long)]
-        pub password: String,
+        pub password: Option<String>,
     }
 
     #[derive(Parser, Debug, Clone)]
@@ -169,11 +169,5 @@ pub mod cli {
     pub struct RpwCli {
         #[command(subcommand)]
         pub command: Command,
-    }
-
-    impl RpwCli {
-        pub fn cli() -> Self {
-            RpwCli::parse()
-        }
     }
 }
